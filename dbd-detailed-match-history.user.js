@@ -199,13 +199,6 @@
             ? `<img src="${getImageUrl(player.playerStatus.image.path)}" class="dbd-status-icon-overlay">`
             : '';
 
-        let bpHourHtml = '<td class="dbd-bph-cell"></td>';
-        if (isUser) {
-            const bpHourVal = bpHour ? (bpHour / 1000000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'M' : '-';
-            const bpHourFull = bpHour ? bpHour.toLocaleString() : '-';
-            bpHourHtml = `<td class="dbd-bph-cell" title="${bpHourFull} BP/h (since last match)">${bpHourVal}</td>`;
-        }
-
         const charBgUrl = `/_next/image/?url=%2Fstatic%2Fimages%2Fgames%2Fdbd%2Fcharacters%2F${isKiller ? 'killer' : 'survivor'}_bg.png&w=3840&q=75`;
 
         return `
@@ -240,16 +233,29 @@
         const currentIndex = matchesSorted.findIndex(m => m.matchStat.matchStartTime === match.matchStat.matchStartTime);
 
         let bpHour = null;
+        let bpHourHtml = ''
+        let downtimeHtml = ''
         if (currentIndex < matchesSorted.length - 1) {
-            const currentEnd = match.matchStat.matchStartTime + match.matchStat.matchDuration;
+            const currentStart = match.matchStat.matchStartTime;
+            const currentEnd = currentStart + match.matchStat.matchDuration;
             const prevMatch = matchesSorted[currentIndex + 1];
             const prevEnd = prevMatch.matchStat.matchStartTime + prevMatch.matchStat.matchDuration;
-            const hourDiff = (currentEnd - prevEnd) / 3600;
 
+            const hourDiff = (currentEnd - prevEnd) / 3600;
             if (hourDiff > 0) {
                 bpHour = Math.round(match.playerStat.bloodpointsEarned / hourDiff);
             }
+
+            const downtimeSec = currentStart - prevEnd;
+            const downtimeText = downtimeSec !== null && downtimeSec >= 0 ? formatTime(downtimeSec) : '-'
+            downtimeHtml = `
+                <div class="dbd-downtime-container">
+                    <span class="dbd-downtime-value">${downtimeText}</span>
+                    <span class="dbd-downtime-label">between matches</span>
+                </div>
+            `;
         }
+
 
         const allPlayers = [match.playerStat].map(p => createPlayerRow(p, p.playerRole === 'VE_Slasher', true, bpHour));
         const opponentRows = match.opponentStat.map(p => createPlayerRow(p, p.playerRole === 'VE_Slasher', false));
@@ -260,8 +266,16 @@
         const dateOptions = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
         const formattedDate = matchDate.toLocaleString('en-US', dateOptions);
 
-        const bpHourStr = bpHour ? (bpHour / 1000000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'M' : '-';
-        const bpHourFull = bpHour ? bpHour.toLocaleString() : '-';
+        if (bpHour) {
+            const bpHourStr = (bpHour / 1000000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'M'
+            const bpHourFull = bpHour.toLocaleString()
+            bpHourHtml = `
+                <div class="dbd-bph-container" title="${bpHourFull} BP/hour (since last match)">
+                    <span class="dbd-bph-value">${bpHourStr}</span>
+                    <span class="dbd-bph-label">BP / hour</span>
+                </div>
+            `;
+        }
 
         return `
             <div class="dbd-match-container">
@@ -287,12 +301,10 @@
                         <img src="${getImageUrl(match.matchStat.map?.image?.path)}" alt="${match.matchStat.map?.name || ''}" class="dbd-map-photo">
                     </div>
                     <div class="dbd-global-text-stack">
-                        <span class="dbd-match-date">${formattedDate}</span>
                         <span class="dbd-match-map-name">${match.matchStat.map?.name || 'Unknown Map'}</span>
-                        <div class="dbd-bph-container" title="${bpHourFull} BP/h (since last match)">
-                            <span class="dbd-bph-value">${bpHourStr}</span>
-                            <span class="dbd-bph-label">BP/H</span>
-                        </div>
+                        <span class="dbd-match-date">${formattedDate}</span>
+                        ${downtimeHtml}
+                        ${bpHourHtml}
                     </div>
                 </div>
             </div>
@@ -583,13 +595,11 @@
                 color: #d4af37;
                 font-weight: bold;
             }
-            .dbd-bph-cell {
-                text-align: right;
-                color: #55acee;
-                font-weight: bold;
-            }
             .dbd-time-cell {
                 text-align: center;
+            }
+            .dbd-user-row .dbd-time-cell {
+                color: white;
                 font-weight: bold;
             }
 
@@ -638,13 +648,12 @@
                 flex-direction: column;
                 gap: 2px;
                 text-align: left;
+                color: #aaa;
             }
             .dbd-match-date {
-                font-size: 14px;
-                color: #aaa;
+                font-size: 12px;
             }
             .dbd-match-map-name {
-                color: #aaa;
             }
             .dbd-bph-container {
                 display: flex;
@@ -653,13 +662,25 @@
             .dbd-bph-value {
                 font-size: 22px;
                 font-weight: bold;
-                color: #55acee;
+                color: white;
             }
             .dbd-bph-label {
                 font-size: 12px;
-                color: #55acee;
                 opacity: 0.8;
+                padding-left: 4px;
+            }
+            .dbd-downtime-container {
+                display: flex;
+                align-items: baseline;
+                font-size: 14px;
+            }
+            .dbd-downtime-value {
                 font-weight: bold;
+            }
+            .dbd-downtime-label {
+                padding-left: 4px;
+                font-size: 12px;
+                opacity: 0.7;
             }
         `;
         document.head.appendChild(style);
