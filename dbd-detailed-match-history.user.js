@@ -309,10 +309,10 @@
                     <thead>
                         <tr>
                             <th colspan="3" style="text-align: left;">${tableHeaderGeneralInfo}</th>
-                            <th title="Objectives / Brutality">Obj / Brut</th>
-                            <th title="Survival / Deviousness">Surv / Dev</th>
-                            <th title="Altruism / Hunter">Alt / Hunt</th>
-                            <th title="Boldness / Sacrifice">Bold / Sac</th>
+                            <th title="Objectives / Brutality">Obj Brut</th>
+                            <th title="Survival / Deviousness">Surv Dev</th>
+                            <th title="Altruism / Hunter">Alt Hunt</th>
+                            <th title="Boldness / Sacrifice">Bold Sac</th>
                             <th></th>
                             <th style="text-align: center;">BP</th>
                             <th></th>
@@ -478,6 +478,9 @@
                 text-transform: uppercase;
                 font-size: 9px;
                 letter-spacing: 0.5px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: clip;
             }
             .dbd-player-row td {
                 padding: 4px;
