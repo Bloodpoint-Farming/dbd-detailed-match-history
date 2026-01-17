@@ -365,9 +365,6 @@
 
             // Handle expansion toggle
             newCard.addEventListener('click', (e) => {
-                // Ignore clicks on icons to avoid interfering with tooltips
-                if (e.target.closest('.dbd-loadout-item')) return;
-
                 // Prevent toggle if user is selecting text
                 const selection = window.getSelection();
                 if (selection && selection.toString().trim().length > 0) return;
