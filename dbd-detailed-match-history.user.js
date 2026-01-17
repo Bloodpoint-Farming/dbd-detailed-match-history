@@ -7,6 +7,8 @@
 // @match        https://stats.deadbydaylight.com/match-history*
 // @run-at       document-start
 // @license      MIT
+// @updateURL    https://github.com/Bloodpoint-Farming/dbd-detailed-match-history/raw/refs/heads/main/dbd-detailed-match-history.user.js
+// @downloadURL  https://github.com/Bloodpoint-Farming/dbd-detailed-match-history/raw/refs/heads/main/dbd-detailed-match-history.user.js
 // @supportURL   https://github.com/Bloodpoint-Farming/dbd-detailed-match-history
 // ==/UserScript==
 
