@@ -327,6 +327,10 @@
                 // Ignore clicks on icons to avoid interfering with tooltips
                 if (e.target.closest('.dbd-loadout-item')) return;
 
+                // Prevent toggle if user is selecting text
+                const selection = window.getSelection();
+                if (selection && selection.toString().trim().length > 0) return;
+
                 const isExpanded = newCard.getAttribute('data-dbd-expanded') === 'true';
                 newCard.setAttribute('data-dbd-expanded', isExpanded ? 'false' : 'true');
             });
@@ -467,9 +471,9 @@
                 position: absolute;
                 bottom: -2px;
                 right: -2px;
-                width: 16px;
-                height: 16px;
-                background: #000;
+                width: 24px;
+                height: 24px;
+                background: rgba(0, 0, 0, 0.2);
                 border-radius: 50%;
                 border: 1px solid #444;
                 padding: 1px;
