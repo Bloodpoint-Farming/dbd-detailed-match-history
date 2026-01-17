@@ -18,6 +18,11 @@
     // Targeting: https://account-backend.bhvr.com/player-stats/match-history/games/dbd/providers/bhvr?lang=en&limit=30
     const MATCH_HISTORY_API_REGEX = /\/player-stats\/match-history\/games\/dbd\/providers\/bhvr/;
 
+    // --- Configuration ---
+    const ICON_SIZE = 40;
+    const ICON_SIZE_SMALL = ICON_SIZE * 0.8;
+    const FONT_STACK = `"Nunito Sans", "Nunito Sans Fallback", "Noto Sans JP", "Noto Sans JP Fallback", "sans-serif", "Noto Sans SC", "Noto Sans SC Fallback", "sans-serif"`;
+
     // Store for intercepted match data
     const matchDataStore = new Map();
 
@@ -130,31 +135,64 @@
         return ASSETS_BASE_URL + path;
     }
 
+    function renderLoadoutItem(item, bgType, title = '', sizeClass = 'dbd-loadout-large') {
+        const bgUrl = `https://assets.live.bhvraccount.com/display/${bgType}_bg.png`;
+        const isEmpty = !item || !item.image?.path;
+        const size = sizeClass === 'dbd-loadout-small' ? ICON_SIZE_SMALL : ICON_SIZE;
+
+        const innerHtml = isEmpty
+            ? ''
+            : `<img src="${getImageUrl(item.image.path)}" alt="${item.name || ''}" class="dbd-loadout-icon">`;
+
+        return `
+            <div class="dbd-loadout-item ${sizeClass} ${isEmpty ? 'dbd-loadout-empty' : ''}" title="${item?.name || title}">
+                <div class="dbd-loadout-bg" style="background-image: url('${bgUrl}')"></div>
+                <div class="dbd-loadout-icon-container" style="width: ${size}px; height: ${size}px;">
+                    ${innerHtml}
+                </div>
+            </div>
+        `;
+    }
+
     function createPlayerRow(player, isKiller, isUser = false, bpHour = null) {
-        const loadout = player.characterLoadout;
+        const loadout = player.characterLoadout || {};
         const postGame = player.postGameStat || {};
 
         // Post game stats - find the 4 values
-        // Survivors: Objectives, Altruism, Boldness, Survival
-        // Killer: Hunter, Deviousness, Brutality, Sacrifice
         const statKeys = isKiller
             ? ['Hunter', 'Deviousness', 'Brutality', 'Sacrifice']
             : ['Objectives', 'Altruism', 'Boldness', 'Survival'];
 
         const statsHtml = statKeys.map(key => {
             const fullKey = isKiller ? `DBD_SlasherScoreCat_${key}` : `DBD_CamperScoreCat_${key}`;
-            return `<td class="dbd-stat-cell" title="${key}">${postGame[fullKey] || 0}</td>`;
+            const score = postGame[fullKey] || 0;
+            const isLow = score < 10000;
+            return `<td class="dbd-stat-cell ${isLow ? 'dbd-stat-low' : ''}" title="${key}">${score.toLocaleString()}</td>`;
         }).join('');
 
-        const perksHtml = (loadout.perks || []).map(perk =>
-            `<img src="${getImageUrl(perk.image?.path)}" title="${perk.name}" class="dbd-perk-icon">`
-        ).join('');
+        // Loadout construction
+        const perks = loadout.perks || [];
+        const perksHtml = [0, 1, 2, 3].map(i => renderLoadoutItem(perks[i], 'perk', `Perk ${i + 1}`)).join('');
+        const offeringHtml = renderLoadoutItem(loadout.offering, 'offering', 'Offering');
+        const itemPowerHtml = renderLoadoutItem(loadout.power, 'item', isKiller ? 'Power' : 'Item');
+        const addons = loadout.addOns || [];
+        const addonsHtml = [0, 1].map(i => renderLoadoutItem(addons[i], 'item', `Add-on ${i + 1}`, 'dbd-loadout-small')).join('');
 
-        const addonsHtml = (loadout.addOns || []).map(addon =>
-            `<img src="${getImageUrl(addon.image?.path)}" title="${addon.name}" class="dbd-addon-icon">`
-        ).join('');
-
-        const powerOrItemHtml = `<img src="${getImageUrl(loadout.power?.image?.path)}" title="${loadout.power?.name}" class="dbd-power-icon">`;
+        const loadoutHtml = `
+            <td class="dbd-loadout-cell">
+                <div class="dbd-loadout-container">
+                    <div class="dbd-loadout-group">${perksHtml}</div>
+                    <div class="dbd-loadout-divider"></div>
+                    <div class="dbd-loadout-group">${offeringHtml}</div>
+                    <div class="dbd-loadout-divider"></div>
+                    <div class="dbd-loadout-group">
+                        ${itemPowerHtml}
+                        <span class="dbd-loadout-plus">+</span>
+                        <div class="dbd-loadout-addons">${addonsHtml}</div>
+                    </div>
+                </div>
+            </td>
+        `;
 
         const statusIconHtml = player.playerStatus?.image?.path
             ? `<img src="${getImageUrl(player.playerStatus.image.path)}" class="dbd-status-icon-overlay">`
@@ -167,26 +205,22 @@
             bpHourHtml = `<td class="dbd-bph-cell" title="${bpHourFull} BP/h (since last match)">${bpHourVal}</td>`;
         }
 
+        const charBgUrl = `/_next/image/?url=%2Fstatic%2Fimages%2Fgames%2Fdbd%2Fcharacters%2F${isKiller ? 'killer' : 'survivor'}_bg.png&w=3840&q=75`;
+
         return `
             <tr class="dbd-player-row ${isKiller ? 'dbd-killer-row' : 'dbd-survivor-row'} ${isUser ? 'dbd-user-row' : ''}">
                 <td class="dbd-char-cell">
-                    <div class="dbd-char-container">
-                        <img src="${getImageUrl(player.characterName?.image?.path)}" title="${player.characterName?.name}" class="dbd-char-icon">
+                    <div class="dbd-char-container" title="${player.characterName?.name || ''}">
+                        <img src="${charBgUrl}" class="dbd-char-bg" role="presentation">
+                        <div class="dbd-char-icon-wrapper">
+                            <img src="${getImageUrl(player.characterName?.image?.path)}" alt="${player.characterName?.name || ''}" class="dbd-char-icon">
+                        </div>
                         ${!isKiller ? statusIconHtml : ''}
                     </div>
                 </td>
-                <td class="dbd-perks-cell">${perksHtml}</td>
-                <td class="dbd-offering-cell">
-                    <img src="${getImageUrl(loadout.offering?.image?.path)}" title="${loadout.offering?.name}" class="dbd-offering-icon">
-                </td>
-                <td class="dbd-item-cell">
-                    <div class="dbd-loadout-item-group">
-                        ${powerOrItemHtml}
-                        <div class="dbd-addons-container">${addonsHtml}</div>
-                    </div>
-                </td>
-                <td class="dbd-bp-cell">${player.bloodpointsEarned?.toLocaleString() || 0}</td>
+                ${loadoutHtml}
                 ${statsHtml}
+                <td class="dbd-bp-cell">${player.bloodpointsEarned?.toLocaleString() || 0}</td>
                 <td class="dbd-time-cell">${formatTime(player.playerTimeInMatch)}</td>
                 ${bpHourHtml}
             </tr>
@@ -227,11 +261,12 @@
                 <thead>
                     <tr>
                         <th>Player</th>
-                        <th>Perks</th>
-                        <th>Off.</th>
-                        <th>Item/Addons</th>
+                        <th>Loadout</th>
+                        <th title="Objectives / Brutality">Obj / Brut</th>
+                        <th title="Survival / Deviousness">Surv / Dev</th>
+                        <th title="Altruism / Hunter">Altr / Hunt</th>
+                        <th title="Boldness / Sacrifice">Bold / Sacr</th>
                         <th>BP</th>
-                        <th colspan="4">Score Categories</th>
                         <th>Time</th>
                         <th>BP/h</th>
                     </tr>
@@ -329,12 +364,13 @@
             .dbd-match-table {
                 width: 100%;
                 border-collapse: collapse;
-                font-size: 11px;
+                font-size: 16px;
                 color: #ccc;
                 table-layout: fixed;
+                font-family: ${FONT_STACK};
             }
             .dbd-match-table th {
-                text-align: left;
+                text-align: center;
                 padding: 4px;
                 border-bottom: 1px solid #333;
                 color: #777;
@@ -362,71 +398,120 @@
             }
             .dbd-char-container {
                 position: relative;
-                width: 40px;
-                height: 40px;
+                width: ${ICON_SIZE}px;
+                height: ${ICON_SIZE}px;
+                overflow: hidden;
+                border-radius: 2px;
+            }
+            .dbd-char-bg {
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                z-index: 1;
+            }
+            .dbd-char-icon-wrapper {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 2;
+                /* Matches the masking style from original site */
+                clip-path: polygon(0 0, 100% 0, 100% 90%, 90% 100%, 0 100%);
             }
             .dbd-char-icon {
-                width: 40px;
-                height: 40px;
-                border-radius: 4px;
-                object-fit: cover;
-                border: 1px solid #444;
+                width: 120%;
+                max-width: none;
+                height: auto;
+                object-fit: contain;
             }
             .dbd-status-icon-overlay {
                 position: absolute;
                 bottom: -2px;
                 right: -2px;
-                width: 18px;
-                height: 18px;
+                width: 16px;
+                height: 16px;
                 background: #000;
                 border-radius: 50%;
                 border: 1px solid #444;
                 padding: 1px;
+                z-index: 3;
             }
-            .dbd-perk-icon {
-                width: 28px;
-                height: 28px;
-                margin-right: 1px;
-                vertical-align: middle;
-                background: rgba(0,0,0,0.3);
-                border-radius: 2px;
+            
+            /* Loadout Styles */
+            .dbd-loadout-cell {
+                padding: 0 4px !important;
             }
-            .dbd-offering-icon {
-                width: 28px;
-                height: 28px;
-                vertical-align: middle;
-                background: rgba(0,0,0,0.3);
-                border-radius: 2px;
-            }
-            .dbd-power-icon {
-                width: 32px;
-                height: 32px;
-                vertical-align: middle;
-                background: rgba(0,0,0,0.3);
-                border-radius: 2px;
-            }
-            .dbd-addon-icon {
-                width: 20px;
-                height: 20px;
-                margin-left: 1px;
-                vertical-align: middle;
-                background: rgba(0,0,0,0.3);
-                border-radius: 2px;
-            }
-            .dbd-loadout-item-group {
+            .dbd-loadout-container {
                 display: flex;
                 align-items: center;
+                gap: 2px;
+                height: ${ICON_SIZE}px;
             }
-            .dbd-addons-container {
+            .dbd-loadout-group {
                 display: flex;
-                flex-direction: column;
-                margin-left: 2px;
+                align-items: center;
                 gap: 1px;
             }
+            .dbd-loadout-item {
+                position: relative;
+                display: inline-block;
+                margin: 0px 2px;
+            }
+            .dbd-loadout-large {
+                width: ${ICON_SIZE}px;
+                height: ${ICON_SIZE}px;
+            }
+            .dbd-loadout-small {
+                width: ${ICON_SIZE_SMALL}px;
+                height: ${ICON_SIZE_SMALL}px;
+            }
+            .dbd-loadout-bg {
+                position: absolute;
+                inset: 0;
+                background-position: center;
+                background-size: contain;
+                background-repeat: no-repeat;
+                filter: brightness(0);
+            }
+            .dbd-loadout-empty .dbd-loadout-bg {
+                opacity: 0.2;
+            }
+            .dbd-loadout-icon-container {
+                position: relative;
+                z-index: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .dbd-loadout-icon {
+                width: 100%;
+                object-fit: contain;
+            }
+            .dbd-loadout-divider {
+                width: 1px;
+                align-self: stretch;
+                background: #6f6f6f;
+                margin: 0px 4px;
+            }
+            .dbd-loadout-plus {
+                font-size: 14px;
+                font-weight: bold;
+                margin: 0 1px;
+            }
+            .dbd-loadout-addons {
+                display: flex;
+                flex-direction: row;
+                gap: 1px;
+            }
+
             .dbd-stat-cell {
                 text-align: right;
-                color: #aaa;
-                font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            }
+            .dbd-stat-low {
+                color: #999;
             }
             .dbd-user-row {
                 background: rgba(255, 255, 255, 0.05);
@@ -435,30 +520,26 @@
                 text-align: right;
                 color: #d4af37;
                 font-weight: bold;
-                font-family: 'JetBrains Mono', 'Fira Code', monospace;
             }
             .dbd-bph-cell {
                 text-align: right;
                 color: #55acee;
                 font-weight: bold;
-                font-family: 'JetBrains Mono', 'Fira Code', monospace;
-                font-size: 10px;
             }
             .dbd-time-cell {
                 text-align: center;
-                color: #666;
-                font-family: 'JetBrains Mono', 'Fira Code', monospace;
             }
 
-            /* Column Widths */
-            .dbd-match-table th:nth-child(1), .dbd-match-table td:nth-child(1) { width: 50px; } /* Player */
-            .dbd-match-table th:nth-child(2), .dbd-match-table td:nth-child(2) { width: 120px; } /* Perks */
-            .dbd-match-table th:nth-child(3), .dbd-match-table td:nth-child(3) { width: 40px; } /* Offering */
-            .dbd-match-table th:nth-child(4), .dbd-match-table td:nth-child(4) { width: 60px; } /* Item/Addons */
-            .dbd-match-table th:nth-child(5), .dbd-match-table td:nth-child(5) { width: 70px; } /* BP */
-            .dbd-stat-cell { width: 45px; } 
-            .dbd-match-table th:nth-child(8), .dbd-match-table td:nth-child(11) { width: 50px; } /* Time */
-            .dbd-match-table th:nth-child(9), .dbd-match-table td:nth-child(6) { width: 70px; } /* BP/h */
+            /* Column Widths (9 columns total) */
+            .dbd-match-table th:nth-child(1), .dbd-match-table td:nth-child(1) { width: 45px; } /* Player */
+            .dbd-match-table th:nth-child(2), .dbd-match-table td:nth-child(2) { width: 420px; } /* Loadout */
+            .dbd-match-table th:nth-child(3), .dbd-match-table td:nth-child(7) { width: 50px; } /* Stat 1 */
+            .dbd-match-table th:nth-child(4), .dbd-match-table td:nth-child(8) { width: 50px; } /* Stat 2 */
+            .dbd-match-table th:nth-child(5), .dbd-match-table td:nth-child(9) { width: 50px; } /* Stat 3 */
+            .dbd-match-table th:nth-child(6), .dbd-match-table td:nth-child(10) { width: 50px; } /* Stat 4 */
+            .dbd-match-table th:nth-child(7), .dbd-match-table td:nth-child(3) { width: 70px; } /* BP */
+            .dbd-match-table th:nth-child(8), .dbd-match-table td:nth-child(4) { width: 50px; } /* Time */
+            .dbd-match-table th:nth-child(9), .dbd-match-table td:nth-child(5) { width: 65px; } /* BP/h */
         `;
         document.head.appendChild(style);
 
