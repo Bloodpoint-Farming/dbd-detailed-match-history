@@ -30,7 +30,7 @@
     const MATCH_HISTORY_API_REGEX = /\/player-stats\/match-history\/games\/dbd\/providers\/bhvr/;
 
     // --- Configuration ---
-    const ICON_SIZE = 40;
+    const ICON_SIZE = 44;
     const ICON_SIZE_SMALL = ICON_SIZE * 0.8;
 
     // Store for intercepted match data
@@ -214,7 +214,9 @@
                     </div>
                 </td>
                 ${loadoutHtml}
+                <td></td>
                 ${statsHtml}
+                <td></td>
                 <td class="dbd-bp-cell">${player.bloodpointsEarned?.toLocaleString() || 0}</td>
                 <td class="dbd-time-cell">${formatTime(player.playerTimeInMatch)}</td>
             </tr>
@@ -288,21 +290,24 @@
                 <table class="dbd-match-table">
                     <colgroup>
                         <col style="width: 45px;"> <!-- Character -->
-                        <col style="width: 400px;"> <!-- Loadout -->
-                        <col style="width: 65px;"> <!-- Score -->
-                        <col style="width: 65px;"> <!-- Score -->
-                        <col style="width: 65px;"> <!-- Score -->
-                        <col style="width: 65px;"> <!-- Score -->
+                        <col style="width: 420px;"> <!-- Loadout -->
+                        <col> <!-- Spacer 1 -->
+                        <col style="width: 60px;"> <!-- Score -->
+                        <col style="width: 60px;"> <!-- Score -->
+                        <col style="width: 60px;"> <!-- Score -->
+                        <col style="width: 60px;"> <!-- Score -->
+                        <col> <!-- Spacer 2 -->
                         <col style="width: 70px;"> <!-- Total BP -->
-                        <col style="width: 50px;"> <!-- Time BP -->
+                        <col style="width: 55px;"> <!-- Match -->
                     </colgroup>
                     <thead>
                         <tr>
-                            <th colspan="2" style="text-align: left;">${tableHeaderGeneralInfo}</th>
+                            <th colspan="3" style="text-align: left;">${tableHeaderGeneralInfo}</th>
                             <th title="Objectives / Brutality">Obj / Brut</th>
                             <th title="Survival / Deviousness">Surv / Dev</th>
                             <th title="Altruism / Hunter">Alt / Hunt</th>
                             <th title="Boldness / Sacrifice">Bold / Sac</th>
+                            <th></th>
                             <th style="text-align: center;">BP</th>
                             <th style="text-align: center;">Match</th>
                         </tr>
@@ -585,8 +590,9 @@
             }
 
             .dbd-stat-cell {
+                font-size: 14px;
                 text-align: right;
-                color: #aaa;
+                color: #ccc;
             }
             .dbd-stat-low {
                 color: #d4af37;
