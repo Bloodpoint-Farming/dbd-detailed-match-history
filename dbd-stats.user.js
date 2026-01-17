@@ -287,8 +287,6 @@
     function transformCard(card, index) {
         if (card.dataset.dbdProcessed) return;
 
-        // console.log(`[DBD Userscript] transformCard()`, matchDataStore);
-
         // Try to find match by index first (simplest and usually correct if they align)
         // Match history matches newest first
         const matches = Array.from(matchDataStore.values()).sort((a, b) => b.matchStat.matchStartTime - a.matchStat.matchStartTime);
@@ -312,8 +310,6 @@
         }
 
         if (match) {
-            console.log(`[DBD Userscript] Transforming card ${index} for match:`, match);
-
             // Create a replacement div to strip all original listeners from the button
             const newCard = document.createElement('div');
 
@@ -347,12 +343,10 @@
     function processAllCards() {
         const selector = '.\\@container\\/match-card';
         const cards = document.querySelectorAll(selector);
-        console.log(`[DBD Userscript] cards.length == ${cards.length}.`);
         cards.forEach((card, index) => transformCard(card, index));
     }
 
     const observer = new MutationObserver((mutations) => {
-        console.log(`[DBD Userscript] Mutation observed.`);
         // debounce slightly to avoid spamming transformations
         if (window._dbdTimer) clearTimeout(window._dbdTimer);
         window._dbdTimer = setTimeout(processAllCards, 100);
