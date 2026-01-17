@@ -21,8 +21,7 @@
     const earlyStyle = document.createElement('style');
     earlyStyle.textContent = `
         html.dbd-data-ready .\\@container\\/match-card:not(.dbd-table-mode) {
-            opacity: 0 !important;
-            pointer-events: none !important;
+            display: none !important;
         }
     `;
     (document.head || document.documentElement).appendChild(earlyStyle);
@@ -389,24 +388,19 @@
                 newCard.setAttribute('data-dbd-expanded', isExpanded ? 'false' : 'true');
             });
 
-            // Replace the button in the DOM
-            card.parentNode.replaceChild(newCard, card);
+            // Hide the original card instead of removing it to avoid Next.js/React hydration errors
+            card.style.display = 'none';
+            card.dataset.dbdProcessed = 'true';
+            card.insertAdjacentElement('afterend', newCard);
         }
     }
 
     function processAllCards() {
-        const selector = '.\\@container\\/match-card';
+        const selector = '.\\@container\\/match-card:not(.dbd-table-mode)';
         const cards = document.querySelectorAll(selector);
         cards.forEach((card, index) => transformCard(card, index));
     }
 
-    const observer = new MutationObserver((mutations) => {
-        // debounce slightly to avoid spamming transformations
-        if (window._dbdTimer) clearTimeout(window._dbdTimer);
-        window._dbdTimer = setTimeout(processAllCards, 100);
-    });
-
-    observer.observe(document.body, { childList: true, subtree: true });
 
     // --- Initialization ---
 
