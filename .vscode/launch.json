@@ -6,6 +6,15 @@
     "configurations": [
         {
             "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome with Debugging",
+            "url": "https://stats.deadbydaylight.com/match-history",
+            "runtimeArgs": [
+                "--remote-debugging-port=9222"
+            ]
+        },
+        {
+            "type": "chrome",
             "request": "attach",
             "name": "Attach to chrome",
             "port": 9222
