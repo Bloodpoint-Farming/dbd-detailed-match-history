@@ -313,24 +313,34 @@
 
         if (match) {
             console.log(`[DBD Userscript] Transforming card ${index} for match:`, match);
+
+            // Create a replacement div to strip all original listeners from the button
+            const newCard = document.createElement('div');
+
+            // Copy all existing attributes (including classes for container queries)
+            for (const attr of card.attributes) {
+                newCard.setAttribute(attr.name, attr.value);
+            }
+
             const isKillerMatch = Object.keys(match.playerStat?.postGameStat || {}).some(k => k.includes('Slasher'));
-            card.classList.add(isKillerMatch ? 'dbd-killer-match' : 'dbd-survivor-match');
+            newCard.classList.add(isKillerMatch ? 'dbd-killer-match' : 'dbd-survivor-match');
 
-            card.innerHTML = createMatchTable(match);
-            card.dataset.dbdProcessed = 'true';
-            card.dataset.dbdExpanded = index === 0 ? 'true' : 'false';
-            card.classList.add('dbd-table-mode');
+            newCard.innerHTML = createMatchTable(match);
+            newCard.dataset.dbdProcessed = 'true';
+            newCard.dataset.dbdExpanded = index === 0 ? 'true' : 'false';
+            newCard.classList.add('dbd-table-mode');
 
-            // Intercept clicks to prevent default button action and handle expand/collapse
-            card.addEventListener('click', (e) => {
-                // Ignore clicks on images/icons to allow potential tooltip interactions or just be more specific
+            // Handle expansion toggle
+            newCard.addEventListener('click', (e) => {
+                // Ignore clicks on icons to avoid interfering with tooltips
                 if (e.target.closest('.dbd-loadout-item')) return;
 
-                e.preventDefault();
-                e.stopPropagation();
-                const isExpanded = card.getAttribute('data-dbd-expanded') === 'true';
-                card.setAttribute('data-dbd-expanded', isExpanded ? 'false' : 'true');
-            }, true);
+                const isExpanded = newCard.getAttribute('data-dbd-expanded') === 'true';
+                newCard.setAttribute('data-dbd-expanded', isExpanded ? 'false' : 'true');
+            });
+
+            // Replace the button in the DOM
+            card.parentNode.replaceChild(newCard, card);
         }
     }
 
@@ -542,7 +552,7 @@
                 color: #aaa;
             }
             .dbd-stat-low {
-                color: #999;
+                color: #d4af37;
             }
             .dbd-user-row {
                 background: rgba(255, 255, 255, 0.05);
