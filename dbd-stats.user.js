@@ -208,7 +208,7 @@
         const charBgUrl = `/_next/image/?url=%2Fstatic%2Fimages%2Fgames%2Fdbd%2Fcharacters%2F${isKiller ? 'killer' : 'survivor'}_bg.png&w=3840&q=75`;
 
         return `
-            <tr class="dbd-player-row ${isKiller ? 'dbd-killer-row' : 'dbd-survivor-row'} ${isUser ? 'dbd-user-row' : ''}">
+            <tr class="dbd-player-row ${isKiller ? 'dbd-killer-row' : 'dbd-survivor-row'} ${isUser ? 'dbd-user-row' : 'dbd-opponent-row'}">
                 <td class="dbd-char-cell">
                     <div class="dbd-char-container" title="${player.characterName?.name || ''}">
                         <img src="${charBgUrl}" class="dbd-char-bg" role="presentation">
@@ -313,9 +313,24 @@
 
         if (match) {
             console.log(`[DBD Userscript] Transforming card ${index} for match:`, match);
+            const isKillerMatch = Object.keys(match.playerStat?.postGameStat || {}).some(k => k.includes('Slasher'));
+            card.classList.add(isKillerMatch ? 'dbd-killer-match' : 'dbd-survivor-match');
+
             card.innerHTML = createMatchTable(match);
             card.dataset.dbdProcessed = 'true';
+            card.dataset.dbdExpanded = index === 0 ? 'true' : 'false';
             card.classList.add('dbd-table-mode');
+
+            // Intercept clicks to prevent default button action and handle expand/collapse
+            card.addEventListener('click', (e) => {
+                // Ignore clicks on images/icons to allow potential tooltip interactions or just be more specific
+                if (e.target.closest('.dbd-loadout-item')) return;
+
+                e.preventDefault();
+                e.stopPropagation();
+                const isExpanded = card.getAttribute('data-dbd-expanded') === 'true';
+                card.setAttribute('data-dbd-expanded', isExpanded ? 'false' : 'true');
+            }, true);
         }
     }
 
@@ -348,18 +363,33 @@
         // CSS Injection
         const style = document.createElement('style');
         style.textContent = `
-            .@container/match-card.dbd-table-mode {
+            .dbd-table-mode {
                 display: block !important;
                 padding: 8px !important;
                 height: auto !important;
                 min-height: unset !important;
-                cursor: default !important;
-                background: #111 !important;
-                border: 1px solid #333 !important;
+                cursor: pointer !important;
+                border: 1px solid rgba(206, 206, 206, 0.1) !important;
                 margin-bottom: 8px !important;
                 border-radius: 8px !important;
                 overflow: hidden !important;
                 width: 100% !important;
+                transition: background 0.2s ease;
+            }
+            .dbd-survivor-match.dbd-table-mode {
+                background: linear-gradient(157deg, oklab(0.372685 -0.0166675 -0.0297666 / 0.9) 0px, oklab(0.256055 -0.00657756 -0.0136725 / 0.5) 80%) !important;
+            }
+            .dbd-killer-match.dbd-table-mode {
+                background: linear-gradient(157deg, oklab(0.300393 0.107573 0.060206 / 0.6) 0px, oklab(0.202126 0.0788645 0.0174824 / 0.36) 80%) !important;
+            }
+            .dbd-survivor-match.dbd-table-mode:hover {
+                background: linear-gradient(157deg, oklab(0.372685 -0.0166675 -0.0297666 / 1) 0px, oklab(0.300393 -0.0105345 -0.0232491 / 0.6) 80%) !important;
+            }
+            .dbd-killer-match.dbd-table-mode:hover {
+                background: linear-gradient(157deg, oklab(0.300393 0.107573 0.060206 / 0.8) 0px, oklab(0.202126 0.0788645 0.0174824 / 0.48) 80%) !important;
+            }
+            .dbd-table-mode[data-dbd-expanded="false"] .dbd-opponent-row {
+                display: none;
             }
             .dbd-match-table {
                 width: 100%;
@@ -509,6 +539,7 @@
 
             .dbd-stat-cell {
                 text-align: right;
+                color: #aaa;
             }
             .dbd-stat-low {
                 color: #999;
@@ -533,13 +564,13 @@
             /* Column Widths (9 columns total) */
             .dbd-match-table th:nth-child(1), .dbd-match-table td:nth-child(1) { width: 45px; } /* Player */
             .dbd-match-table th:nth-child(2), .dbd-match-table td:nth-child(2) { width: 420px; } /* Loadout */
-            .dbd-match-table th:nth-child(3), .dbd-match-table td:nth-child(7) { width: 50px; } /* Stat 1 */
-            .dbd-match-table th:nth-child(4), .dbd-match-table td:nth-child(8) { width: 50px; } /* Stat 2 */
-            .dbd-match-table th:nth-child(5), .dbd-match-table td:nth-child(9) { width: 50px; } /* Stat 3 */
-            .dbd-match-table th:nth-child(6), .dbd-match-table td:nth-child(10) { width: 50px; } /* Stat 4 */
-            .dbd-match-table th:nth-child(7), .dbd-match-table td:nth-child(3) { width: 70px; } /* BP */
-            .dbd-match-table th:nth-child(8), .dbd-match-table td:nth-child(4) { width: 50px; } /* Time */
-            .dbd-match-table th:nth-child(9), .dbd-match-table td:nth-child(5) { width: 65px; } /* BP/h */
+            .dbd-match-table th:nth-child(3), .dbd-match-table td:nth-child(3) { width: 50px; } /* Stat 1 */
+            .dbd-match-table th:nth-child(4), .dbd-match-table td:nth-child(4) { width: 50px; } /* Stat 2 */
+            .dbd-match-table th:nth-child(5), .dbd-match-table td:nth-child(5) { width: 50px; } /* Stat 3 */
+            .dbd-match-table th:nth-child(6), .dbd-match-table td:nth-child(6) { width: 50px; } /* Stat 4 */
+            .dbd-match-table th:nth-child(7), .dbd-match-table td:nth-child(7) { width: 70px; } /* BP */
+            .dbd-match-table th:nth-child(8), .dbd-match-table td:nth-child(8) { width: 50px; } /* Time */
+            .dbd-match-table th:nth-child(9), .dbd-match-table td:nth-child(9) { width: 65px; } /* BP/h */
         `;
         document.head.appendChild(style);
 
