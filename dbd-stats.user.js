@@ -14,6 +14,16 @@
 
     console.log('[DBD Userscript] Script started at:', document.readyState);
 
+    // --- Early CSS Injection (to prevent flash) ---
+    const earlyStyle = document.createElement('style');
+    earlyStyle.textContent = `
+        html.dbd-data-ready .\\@container\\/match-card:not(.dbd-table-mode) {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+    `;
+    (document.head || document.documentElement).appendChild(earlyStyle);
+
     const ASSETS_BASE_URL = 'https://assets.live.bhvraccount.com/';
     // Targeting: https://account-backend.bhvr.com/player-stats/match-history/games/dbd/providers/bhvr?lang=en&limit=30
     const MATCH_HISTORY_API_REGEX = /\/player-stats\/match-history\/games\/dbd\/providers\/bhvr/;
@@ -33,6 +43,7 @@
                 matchDataStore.set(matchId, match);
             });
             console.log(`[DBD Userscript] Stored ${data.length} matches. Total: ${matchDataStore.size}`);
+            document.documentElement.classList.add('dbd-data-ready');
             processAllCards();
         }
     }
@@ -83,42 +94,31 @@
             this.addEventListener('readystatechange', () => { if (xhr.readyState === 4) onDone(); });
             return originalSend.apply(this, arguments);
         };
-
-        // Proactive Fallback: If we haven't caught anything in 2 seconds, try to fetch it ourselves
-        setTimeout(attemptManualFetch, 2000);
     }
 
-    async function attemptManualFetch() {
-        if (matchDataStore.size > 0) return;
-
-        console.log('[DBD Userscript] Interception missed or no data yet. Attempting manual fallback fetch...');
+    function extractFromSessionStorage() {
         try {
-            const authStore = JSON.parse(localStorage.getItem('auth-store') || '{}');
-            const token = authStore?.state?.authToken?.token;
+            const cacheRaw = sessionStorage.getItem('REACT_QUERY_OFFLINE_CACHE');
+            if (!cacheRaw) return;
 
-            if (!token) {
-                console.warn('[DBD Userscript] No auth token found in localStorage. Cannot perform fallback.');
-                return;
+            const cache = JSON.parse(cacheRaw);
+            const queries = cache?.clientState?.queries || [];
+
+            const matchQuery = queries.find(q =>
+                Array.isArray(q.queryKey) && q.queryKey[0] === 'stats.match-history'
+            );
+
+            if (matchQuery?.state?.data) {
+                console.log('[DBD Userscript] Found cached match data in sessionStorage.');
+                storeMatchData(matchQuery.state.data);
             }
-
-            const url = 'https://account-backend.bhvr.com/player-stats/match-history/games/dbd/providers/bhvr?lang=en&limit=30';
-            const response = await fetch(url, { // Use global fetch here, not originalFetch
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                console.log('[DBD Userscript] Fallback fetch successful.');
-                storeMatchData(data);
-            } else {
-                console.error('[DBD Userscript] Fallback fetch failed with status:', response.status);
-            }
-        } catch (e) {
-            console.error('[DBD Userscript] Error during fallback fetch:', e);
+        } catch (err) {
+            console.error('[DBD Userscript] Error extracting from sessionStorage:', err);
         }
     }
 
     setupInterception();
+    extractFromSessionStorage();
 
     // --- UI Rendering ---
 
@@ -279,10 +279,6 @@
     }
 
     // --- DOM Mutation Handling ---
-
-    function getMatchKey(m) {
-        return `${m.matchStat.map.name}_${Math.floor(m.matchStat.matchDuration)}`;
-    }
 
     function transformCard(card, index) {
         if (card.dataset.dbdProcessed) return;
@@ -580,8 +576,10 @@
 
         // Observer
         const observer = new MutationObserver(() => {
-            if (window._dbdTimer) clearTimeout(window._dbdTimer);
-            window._dbdTimer = setTimeout(processAllCards, 100);
+            if (matchDataStore.size > 0) {
+                if (window._dbdTimer) clearTimeout(window._dbdTimer);
+                window._dbdTimer = setTimeout(processAllCards, 0);
+            }
         });
         observer.observe(document.body, { childList: true, subtree: true });
 
