@@ -280,16 +280,25 @@
         return `
             <div class="dbd-match-container">
                 <table class="dbd-match-table">
+                    <colgroup>
+                        <col style="width: 45px;"> <!-- Character -->
+                        <col style="width: 400px;"> <!-- Loadout -->
+                        <col style="width: 65px;"> <!-- Score -->
+                        <col style="width: 65px;"> <!-- Score -->
+                        <col style="width: 65px;"> <!-- Score -->
+                        <col style="width: 65px;"> <!-- Score -->
+                        <col style="width: 70px;"> <!-- Total BP -->
+                        <col style="width: 50px;"> <!-- Time BP -->
+                    </colgroup>
                     <thead>
                         <tr>
-                            <th>Player</th>
-                            <th>Loadout</th>
+                            <th colspan="2" style="text-align: left;">${formattedDate}</th>
                             <th title="Objectives / Brutality">Obj / Brut</th>
                             <th title="Survival / Deviousness">Surv / Dev</th>
-                            <th title="Altruism / Hunter">Altr / Hunt</th>
-                            <th title="Boldness / Sacrifice">Bold / Sacr</th>
-                            <th>BP</th>
-                            <th>Time</th>
+                            <th title="Altruism / Hunter">Alt / Hunt</th>
+                            <th title="Boldness / Sacrifice">Bold / Sac</th>
+                            <th style="text-align: center;">BP</th>
+                            <th style="text-align: center;">Match</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -301,10 +310,9 @@
                         <img src="${getImageUrl(match.matchStat.map?.image?.path)}" alt="${match.matchStat.map?.name || ''}" class="dbd-map-photo">
                     </div>
                     <div class="dbd-global-text-stack">
-                        <span class="dbd-match-map-name">${match.matchStat.map?.name || 'Unknown Map'}</span>
-                        <span class="dbd-match-date">${formattedDate}</span>
-                        ${downtimeHtml}
+                        <span class="dbd-match-map-name">${match.matchStat.map?.name || 'Unknown Map'}</span> 
                         ${bpHourHtml}
+                        ${downtimeHtml}
                     </div>
                 </div>
             </div>
@@ -437,20 +445,14 @@
                 font-family: ${FONT_STACK};
             }
             .dbd-match-table th {
-                text-align: right;
                 padding: 4px;
                 border-bottom: 1px solid #333;
                 color: #777;
                 font-weight: 600;
+                text-align: right;
                 text-transform: uppercase;
                 font-size: 9px;
                 letter-spacing: 0.5px;
-            }
-            .dbd-match-table th:nth-child(1), .dbd-match-table th:nth-child(2) {
-                text-align: left;
-            }
-            .dbd-match-table th:nth-child(8) {
-                text-align: center;
             }
             .dbd-player-row td {
                 padding: 4px;
@@ -603,16 +605,6 @@
                 font-weight: bold;
             }
 
-            /* Column Widths (8 columns total) */
-            .dbd-match-table th:nth-child(1), .dbd-match-table td:nth-child(1) { width: 45px; } /* Player */
-            .dbd-match-table th:nth-child(2), .dbd-match-table td:nth-child(2) { width: 400px; } /* Loadout */
-            .dbd-match-table th:nth-child(3), .dbd-match-table td:nth-child(3) { width: 65px; } /* Stat 1 */
-            .dbd-match-table th:nth-child(4), .dbd-match-table td:nth-child(4) { width: 65px; } /* Stat 2 */
-            .dbd-match-table th:nth-child(5), .dbd-match-table td:nth-child(5) { width: 65px; } /* Stat 3 */
-            .dbd-match-table th:nth-child(6), .dbd-match-table td:nth-child(6) { width: 65px; } /* Stat 4 */
-            .dbd-match-table th:nth-child(7), .dbd-match-table td:nth-child(7) { width: 70px; } /* BP */
-            .dbd-match-table th:nth-child(8), .dbd-match-table td:nth-child(8) { width: 50px; } /* Time */
-
             /* Global Info Styles */
             .dbd-match-container {
                 display: flex;
@@ -650,9 +642,6 @@
                 text-align: left;
                 color: #aaa;
             }
-            .dbd-match-date {
-                font-size: 12px;
-            }
             .dbd-match-map-name {
             }
             .dbd-bph-container {
@@ -672,10 +661,7 @@
             .dbd-downtime-container {
                 display: flex;
                 align-items: baseline;
-                font-size: 14px;
-            }
-            .dbd-downtime-value {
-                font-weight: bold;
+                font-size: 12px;
             }
             .dbd-downtime-label {
                 padding-left: 4px;
