@@ -123,8 +123,11 @@
 
     // --- UI Rendering ---
 
-    function formatTime(seconds) {
+    function formatDuration(seconds) {
         if (!seconds && seconds !== 0) return '-';
+        if (seconds < 0) {
+            seconds = 0; // sometimes -1
+        }
         // Intentionally NOT doing hours and days to avoid confusion.
         // Thousands of minutes since last match is fine.
         const m = Math.floor(seconds / 60);
@@ -220,7 +223,7 @@
                 <td></td>
                 <td class="dbd-bp-cell">${player.bloodpointsEarned?.toLocaleString() || 0}</td>
                 <td></td>
-                <td class="dbd-time-cell">${formatTime(player.playerTimeInMatch)}</td>
+                <td class="dbd-time-cell">${formatDuration(player.playerTimeInMatch)}</td>
             </tr>
         `;
     }
@@ -252,7 +255,7 @@
             }
 
             const downtimeSec = currentStart - prevEnd;
-            const downtimeText = downtimeSec !== null && downtimeSec >= 0 ? formatTime(downtimeSec) : '-'
+            const downtimeText = downtimeSec !== null && downtimeSec >= 0 ? formatDuration(downtimeSec) : '-'
             downtimeHtml = `
                 <div class="dbd-downtime-container">
                     <span class="dbd-downtime-value">${downtimeText}</span>
@@ -355,7 +358,7 @@
 
                 match = matches.find(m => {
                     const mName = m.matchStat.map.name;
-                    const mDuration = formatTime(m.matchStat.matchDuration);
+                    const mDuration = formatDuration(m.matchStat.matchDuration);
                     return mName === mapName && mDuration === durationText;
                 });
             }
