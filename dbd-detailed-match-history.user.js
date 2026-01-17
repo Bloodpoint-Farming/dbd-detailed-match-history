@@ -32,7 +32,6 @@
     // --- Configuration ---
     const ICON_SIZE = 40;
     const ICON_SIZE_SMALL = ICON_SIZE * 0.8;
-    const FONT_STACK = `"Nunito Sans", "Nunito Sans Fallback", "Noto Sans JP", "Noto Sans JP Fallback", "sans-serif", "Noto Sans SC", "Noto Sans SC Fallback", "sans-serif"`;
 
     // Store for intercepted match data
     const matchDataStore = new Map();
@@ -125,6 +124,8 @@
 
     function formatTime(seconds) {
         if (!seconds && seconds !== 0) return '-';
+        // Intentionally NOT doing hours and days to avoid confusion.
+        // Thousands of minutes since last match is fine.
         const m = Math.floor(seconds / 60);
         const s = Math.floor(seconds % 60);
         return `${m}:${s.toString().padStart(2, '0')}`;
@@ -132,7 +133,7 @@
 
     function getImageUrl(path) {
         if (!path) return '';
-        if (path.startsWith('http')) return path;
+        if (path.startsWith('https')) return path;
         return ASSETS_BASE_URL + path;
     }
 
@@ -266,6 +267,11 @@
         const dateOptions = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
         const formattedDate = matchDate.toLocaleString('en-US', dateOptions);
 
+        let tableHeaderGeneralInfo = formattedDate
+        if (match.matchStat.isCustomMatch) {
+            tableHeaderGeneralInfo += ` - Custom Match`
+        }
+
         if (bpHour) {
             const bpHourStr = (bpHour / 1000000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'M'
             const bpHourFull = bpHour.toLocaleString()
@@ -292,7 +298,7 @@
                     </colgroup>
                     <thead>
                         <tr>
-                            <th colspan="2" style="text-align: left;">${formattedDate}</th>
+                            <th colspan="2" style="text-align: left;">${tableHeaderGeneralInfo}</th>
                             <th title="Objectives / Brutality">Obj / Brut</th>
                             <th title="Survival / Deviousness">Surv / Dev</th>
                             <th title="Altruism / Hunter">Alt / Hunt</th>
@@ -439,7 +445,6 @@
                 font-size: 16px;
                 color: #ccc;
                 table-layout: fixed;
-                font-family: ${FONT_STACK};
             }
             .dbd-match-table th {
                 padding: 4px;
