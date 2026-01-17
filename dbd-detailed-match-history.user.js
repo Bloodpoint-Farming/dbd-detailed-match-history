@@ -339,69 +339,80 @@
 
     // --- DOM Mutation Handling ---
 
-    function transformCard(card, index) {
-        if (card.dataset.dbdProcessed) return;
+    function createEnhancedCard(match, index) {
+        const newCard = document.createElement('div');
+        newCard.className = '@container/match-card dbd-table-mode';
 
-        // Try to find match by index first (simplest and usually correct if they align)
-        // Match history matches newest first
-        const matches = Array.from(matchDataStore.values()).sort((a, b) => b.matchStat.matchStartTime - a.matchStat.matchStartTime);
-        let match = matches[index];
+        const isKillerMatch = Object.keys(match.playerStat?.postGameStat || {}).some(k => k.includes('Slasher'));
+        newCard.classList.add(isKillerMatch ? 'dbd-killer-match' : 'dbd-survivor-match');
 
-        // Fallback: Try to find by map name and duration if index doesn't seem right 
-        // (though on this site they usually align perfectly)
-        if (!match) {
-            const mapNameElement = card.querySelector('.line-clamp-2');
-            const durationElement = card.querySelector('.font-display');
-            if (mapNameElement && durationElement) {
-                const mapName = mapNameElement.textContent.trim();
-                const durationText = durationElement.textContent.trim(); // e.g. "10:30"
+        newCard.innerHTML = createMatchTable(match);
+        newCard.dataset.dbdProcessed = 'true';
+        newCard.dataset.dbdExpanded = index === 0 ? 'true' : 'false';
 
-                match = matches.find(m => {
-                    const mName = m.matchStat.map.name;
-                    const mDuration = formatDuration(m.matchStat.matchDuration);
-                    return mName === mapName && mDuration === durationText;
-                });
-            }
-        }
+        // Handle expansion toggle
+        newCard.addEventListener('click', (e) => {
+            const selection = window.getSelection();
+            if (selection && selection.toString().trim().length > 0) return;
+            const isExpanded = newCard.getAttribute('data-dbd-expanded') === 'true';
+            newCard.setAttribute('data-dbd-expanded', isExpanded ? 'false' : 'true');
+        });
 
-        if (match) {
-            // Create a replacement div to strip all original listeners from the button
-            const newCard = document.createElement('div');
-
-            // Copy all existing attributes (including classes for container queries)
-            for (const attr of card.attributes) {
-                newCard.setAttribute(attr.name, attr.value);
-            }
-
-            const isKillerMatch = Object.keys(match.playerStat?.postGameStat || {}).some(k => k.includes('Slasher'));
-            newCard.classList.add(isKillerMatch ? 'dbd-killer-match' : 'dbd-survivor-match');
-
-            newCard.innerHTML = createMatchTable(match);
-            newCard.dataset.dbdProcessed = 'true';
-            newCard.dataset.dbdExpanded = index === 0 ? 'true' : 'false';
-            newCard.classList.add('dbd-table-mode');
-
-            // Handle expansion toggle
-            newCard.addEventListener('click', (e) => {
-                // Prevent toggle if user is selecting text
-                const selection = window.getSelection();
-                if (selection && selection.toString().trim().length > 0) return;
-
-                const isExpanded = newCard.getAttribute('data-dbd-expanded') === 'true';
-                newCard.setAttribute('data-dbd-expanded', isExpanded ? 'false' : 'true');
-            });
-
-            // Hide the original card instead of removing it to avoid Next.js/React hydration errors
-            card.style.display = 'none';
-            card.dataset.dbdProcessed = 'true';
-            card.insertAdjacentElement('afterend', newCard);
-        }
+        return newCard;
     }
 
     function processAllCards() {
-        const selector = '.\\@container\\/match-card:not(.dbd-table-mode)';
-        const cards = document.querySelectorAll(selector);
-        cards.forEach((card, index) => transformCard(card, index));
+        const originalCards = document.querySelectorAll('.\\@container\\/match-card:not(.dbd-table-mode)');
+
+        // Always hide original cards if they appear
+        originalCards.forEach(card => {
+            if (card.style.display !== 'none') card.style.display = 'none';
+        });
+
+        if (matchDataStore.size === 0) return;
+
+        // Find or create our wrapper
+        let wrapper = document.getElementById('dbd-enhanced-history-wrapper');
+        if (!wrapper) {
+            const firstCard = document.querySelector('.\\@container\\/match-card:not(.dbd-table-mode)');
+            if (firstCard && firstCard.parentElement) {
+                wrapper = document.createElement('div');
+                wrapper.id = 'dbd-enhanced-history-wrapper';
+                // Insert before the first original card to maintain position 
+                // while keeping original cards as siblings for React stability
+                firstCard.parentElement.insertBefore(wrapper, firstCard);
+            } else {
+                return;
+            }
+        }
+
+        const matches = Array.from(matchDataStore.values()).sort((a, b) => b.matchStat.matchStartTime - a.matchStat.matchStartTime);
+
+        matches.forEach((match, index) => {
+            const matchId = `${match.matchStat.matchStartTime}_${match.matchStat.map.name}`;
+            const elementId = `dbd-match-${match.matchStat.matchStartTime}`; // Use start time for ID stability
+            let existing = document.getElementById(elementId);
+
+            if (!existing) {
+                const newCard = createEnhancedCard(match, index);
+                newCard.id = elementId;
+                newCard.dataset.dbdMatchId = matchId;
+
+                // Find correct position in wrapper to maintain reverse-chronological order
+                const nextInSorted = matches[index + 1];
+                let referenceNode = null;
+                if (nextInSorted) {
+                    const nextElementId = `dbd-match-${nextInSorted.matchStat.matchStartTime}`;
+                    referenceNode = document.getElementById(nextElementId);
+                }
+
+                if (referenceNode) {
+                    wrapper.insertBefore(newCard, referenceNode);
+                } else {
+                    wrapper.appendChild(newCard);
+                }
+            }
+        });
     }
 
 
@@ -418,6 +429,12 @@
         // CSS Injection
         const style = document.createElement('style');
         style.textContent = `
+            #dbd-enhanced-history-wrapper {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 24px !important;
+                width: 100% !important;
+            }
             .dbd-table-mode {
                 display: block !important;
                 padding: 8px !important;
@@ -425,7 +442,6 @@
                 min-height: unset !important;
                 cursor: pointer !important;
                 border: 1px solid rgba(206, 206, 206, 0.1) !important;
-                margin-bottom: 8px !important;
                 border-radius: 8px !important;
                 overflow: hidden !important;
                 width: 100% !important;
