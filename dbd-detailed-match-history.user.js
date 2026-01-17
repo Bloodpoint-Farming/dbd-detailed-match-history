@@ -223,7 +223,6 @@
                 ${statsHtml}
                 <td class="dbd-bp-cell">${player.bloodpointsEarned?.toLocaleString() || 0}</td>
                 <td class="dbd-time-cell">${formatTime(player.playerTimeInMatch)}</td>
-                ${bpHourHtml}
             </tr>
         `;
     }
@@ -257,25 +256,46 @@
 
         const rowsHtml = allPlayers.concat(opponentRows).join('');
 
+        const matchDate = new Date(match.matchStat.matchStartTime * 1000);
+        const dateOptions = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
+        const formattedDate = matchDate.toLocaleString('en-US', dateOptions);
+
+        const bpHourStr = bpHour ? (bpHour / 1000000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'M' : '-';
+        const bpHourFull = bpHour ? bpHour.toLocaleString() : '-';
+
         return `
-            <table class="dbd-match-table">
-                <thead>
-                    <tr>
-                        <th>Player</th>
-                        <th>Loadout</th>
-                        <th title="Objectives / Brutality">Obj / Brut</th>
-                        <th title="Survival / Deviousness">Surv / Dev</th>
-                        <th title="Altruism / Hunter">Altr / Hunt</th>
-                        <th title="Boldness / Sacrifice">Bold / Sacr</th>
-                        <th>BP</th>
-                        <th>Time</th>
-                        <th>BP/h</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rowsHtml}
-                </tbody>
-            </table>
+            <div class="dbd-match-container">
+                <table class="dbd-match-table">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Loadout</th>
+                            <th title="Objectives / Brutality">Obj / Brut</th>
+                            <th title="Survival / Deviousness">Surv / Dev</th>
+                            <th title="Altruism / Hunter">Altr / Hunt</th>
+                            <th title="Boldness / Sacrifice">Bold / Sacr</th>
+                            <th>BP</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+                <div class="dbd-match-global-info">
+                    <div class="dbd-map-photo-container">
+                        <img src="${getImageUrl(match.matchStat.map?.image?.path)}" alt="${match.matchStat.map?.name || ''}" class="dbd-map-photo">
+                    </div>
+                    <div class="dbd-global-text-stack">
+                        <span class="dbd-match-date">${formattedDate}</span>
+                        <span class="dbd-match-map-name">${match.matchStat.map?.name || 'Unknown Map'}</span>
+                        <div class="dbd-bph-container" title="${bpHourFull} BP/h (since last match)">
+                            <span class="dbd-bph-value">${bpHourStr}</span>
+                            <span class="dbd-bph-label">BP/H</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         `;
     }
 
@@ -570,18 +590,77 @@
             }
             .dbd-time-cell {
                 text-align: center;
+                font-weight: bold;
             }
 
-            /* Column Widths (9 columns total) */
+            /* Column Widths (8 columns total) */
             .dbd-match-table th:nth-child(1), .dbd-match-table td:nth-child(1) { width: 45px; } /* Player */
-            .dbd-match-table th:nth-child(2), .dbd-match-table td:nth-child(2) { width: 420px; } /* Loadout */
-            .dbd-match-table th:nth-child(3), .dbd-match-table td:nth-child(3) { width: 50px; } /* Stat 1 */
-            .dbd-match-table th:nth-child(4), .dbd-match-table td:nth-child(4) { width: 50px; } /* Stat 2 */
-            .dbd-match-table th:nth-child(5), .dbd-match-table td:nth-child(5) { width: 50px; } /* Stat 3 */
-            .dbd-match-table th:nth-child(6), .dbd-match-table td:nth-child(6) { width: 50px; } /* Stat 4 */
+            .dbd-match-table th:nth-child(2), .dbd-match-table td:nth-child(2) { width: 400px; } /* Loadout */
+            .dbd-match-table th:nth-child(3), .dbd-match-table td:nth-child(3) { width: 65px; } /* Stat 1 */
+            .dbd-match-table th:nth-child(4), .dbd-match-table td:nth-child(4) { width: 65px; } /* Stat 2 */
+            .dbd-match-table th:nth-child(5), .dbd-match-table td:nth-child(5) { width: 65px; } /* Stat 3 */
+            .dbd-match-table th:nth-child(6), .dbd-match-table td:nth-child(6) { width: 65px; } /* Stat 4 */
             .dbd-match-table th:nth-child(7), .dbd-match-table td:nth-child(7) { width: 70px; } /* BP */
             .dbd-match-table th:nth-child(8), .dbd-match-table td:nth-child(8) { width: 50px; } /* Time */
-            .dbd-match-table th:nth-child(9), .dbd-match-table td:nth-child(9) { width: 65px; } /* BP/h */
+
+            /* Global Info Styles */
+            .dbd-match-container {
+                display: flex;
+                gap: 16px;
+                align-items: stretch;
+                justify-content: space-between;
+                width: 100%;
+            }
+            .dbd-match-global-info {
+                display: flex;
+                gap: 16px;
+                align-items: center;
+                min-width: 320px;
+                padding-top: 8px;
+                padding-left: 16px;
+                border-left: 1px solid rgba(206, 206, 206, 0.1);
+            }
+            .dbd-map-photo-container {
+                position: relative;
+                width: 120px;
+                height: 80px;
+                overflow: hidden;
+                border-radius: 4px;
+                flex-shrink: 0;
+            }
+            .dbd-map-photo {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+            .dbd-global-text-stack {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                text-align: left;
+            }
+            .dbd-match-date {
+                font-size: 14px;
+                color: #aaa;
+            }
+            .dbd-match-map-name {
+                color: #aaa;
+            }
+            .dbd-bph-container {
+                display: flex;
+                align-items: baseline;
+            }
+            .dbd-bph-value {
+                font-size: 22px;
+                font-weight: bold;
+                color: #55acee;
+            }
+            .dbd-bph-label {
+                font-size: 12px;
+                color: #55acee;
+                opacity: 0.8;
+                font-weight: bold;
+            }
         `;
         document.head.appendChild(style);
 
