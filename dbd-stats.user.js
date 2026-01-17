@@ -400,7 +400,7 @@
                 font-family: ${FONT_STACK};
             }
             .dbd-match-table th {
-                text-align: center;
+                text-align: right;
                 padding: 4px;
                 border-bottom: 1px solid #333;
                 color: #777;
@@ -408,6 +408,12 @@
                 text-transform: uppercase;
                 font-size: 9px;
                 letter-spacing: 0.5px;
+            }
+            .dbd-match-table th:nth-child(1), .dbd-match-table th:nth-child(2) {
+                text-align: left;
+            }
+            .dbd-match-table th:nth-child(8) {
+                text-align: center;
             }
             .dbd-player-row td {
                 padding: 4px;
