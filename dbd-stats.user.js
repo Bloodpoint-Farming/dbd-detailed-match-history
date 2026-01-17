@@ -130,7 +130,7 @@
         return ASSETS_BASE_URL + path;
     }
 
-    function createPlayerRow(player, isKiller) {
+    function createPlayerRow(player, isKiller, isUser = false, bpHour = null) {
         const loadout = player.characterLoadout;
         const postGame = player.postGameStat || {};
 
@@ -160,8 +160,15 @@
             ? `<img src="${getImageUrl(player.playerStatus.image.path)}" class="dbd-status-icon-overlay">`
             : '';
 
+        let bpHourHtml = '<td class="dbd-bph-cell"></td>';
+        if (isUser) {
+            const bpHourVal = bpHour ? (bpHour / 1000000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'M' : '-';
+            const bpHourFull = bpHour ? bpHour.toLocaleString() : '-';
+            bpHourHtml = `<td class="dbd-bph-cell" title="${bpHourFull} BP/h (since last match)">${bpHourVal}</td>`;
+        }
+
         return `
-            <tr class="dbd-player-row ${isKiller ? 'dbd-killer-row' : 'dbd-survivor-row'}">
+            <tr class="dbd-player-row ${isKiller ? 'dbd-killer-row' : 'dbd-survivor-row'} ${isUser ? 'dbd-user-row' : ''}">
                 <td class="dbd-char-cell">
                     <div class="dbd-char-container">
                         <img src="${getImageUrl(player.characterName?.image?.path)}" title="${player.characterName?.name}" class="dbd-char-icon">
@@ -181,6 +188,7 @@
                 <td class="dbd-bp-cell">${player.bloodpointsEarned?.toLocaleString() || 0}</td>
                 ${statsHtml}
                 <td class="dbd-time-cell">${formatTime(player.playerTimeInMatch)}</td>
+                ${bpHourHtml}
             </tr>
         `;
     }
@@ -192,9 +200,27 @@
             return a.playerRole === 'VE_Slasher' ? 1 : -1;
         });
 
-        const allPlayers = [match.playerStat, ...match.opponentStat];
+        // Calculate BP/hour for the current player
+        // We need the previous match in chronological order
+        const matchesSorted = Array.from(matchDataStore.values()).sort((a, b) => b.matchStat.matchStartTime - a.matchStat.matchStartTime);
+        const currentIndex = matchesSorted.findIndex(m => m.matchStat.matchStartTime === match.matchStat.matchStartTime);
 
-        const rowsHtml = allPlayers.map(p => createPlayerRow(p, p.playerRole === 'VE_Slasher')).join('');
+        let bpHour = null;
+        if (currentIndex < matchesSorted.length - 1) {
+            const currentEnd = match.matchStat.matchStartTime + match.matchStat.matchDuration;
+            const prevMatch = matchesSorted[currentIndex + 1];
+            const prevEnd = prevMatch.matchStat.matchStartTime + prevMatch.matchStat.matchDuration;
+            const hourDiff = (currentEnd - prevEnd) / 3600;
+
+            if (hourDiff > 0) {
+                bpHour = Math.round(match.playerStat.bloodpointsEarned / hourDiff);
+            }
+        }
+
+        const allPlayers = [match.playerStat].map(p => createPlayerRow(p, p.playerRole === 'VE_Slasher', true, bpHour));
+        const opponentRows = match.opponentStat.map(p => createPlayerRow(p, p.playerRole === 'VE_Slasher', false));
+
+        const rowsHtml = allPlayers.concat(opponentRows).join('');
 
         return `
             <table class="dbd-match-table">
@@ -207,6 +233,7 @@
                         <th>BP</th>
                         <th colspan="4">Score Categories</th>
                         <th>Time</th>
+                        <th>BP/h</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -401,11 +428,21 @@
                 color: #aaa;
                 font-family: 'JetBrains Mono', 'Fira Code', monospace;
             }
+            .dbd-user-row {
+                background: rgba(255, 255, 255, 0.05);
+            }
             .dbd-bp-cell {
                 text-align: right;
                 color: #d4af37;
                 font-weight: bold;
                 font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            }
+            .dbd-bph-cell {
+                text-align: right;
+                color: #55acee;
+                font-weight: bold;
+                font-family: 'JetBrains Mono', 'Fira Code', monospace;
+                font-size: 10px;
             }
             .dbd-time-cell {
                 text-align: center;
@@ -420,7 +457,8 @@
             .dbd-match-table th:nth-child(4), .dbd-match-table td:nth-child(4) { width: 60px; } /* Item/Addons */
             .dbd-match-table th:nth-child(5), .dbd-match-table td:nth-child(5) { width: 70px; } /* BP */
             .dbd-stat-cell { width: 45px; } 
-            .dbd-match-table th:nth-child(7), .dbd-match-table td:nth-child(10) { width: 50px; } /* Time */
+            .dbd-match-table th:nth-child(8), .dbd-match-table td:nth-child(11) { width: 50px; } /* Time */
+            .dbd-match-table th:nth-child(9), .dbd-match-table td:nth-child(6) { width: 70px; } /* BP/h */
         `;
         document.head.appendChild(style);
 
