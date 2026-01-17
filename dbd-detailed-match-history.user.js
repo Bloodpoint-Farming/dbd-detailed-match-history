@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         DBD Detailed Match History
-// @namespace    http://tampermonkey.net/
+// @namespace    https://github.com/Bloodpoint-Farming
 // @version      1.0.0
-// @description  Changes match history rows to display a table with stats for all 5 players.
+// @description  Changes match history to show BP/category for all players and BP/hour.
 // @author       Snoggles
 // @match        https://stats.deadbydaylight.com/match-history*
 // @run-at       document-start
-// @grant        none
+// @license      MIT
+// @supportURL   https://github.com/Bloodpoint-Farming/dbd-detailed-match-history
 // ==/UserScript==
 
 (function () {
