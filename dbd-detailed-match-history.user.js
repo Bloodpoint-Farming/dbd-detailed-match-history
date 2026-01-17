@@ -218,6 +218,7 @@
                 ${statsHtml}
                 <td></td>
                 <td class="dbd-bp-cell">${player.bloodpointsEarned?.toLocaleString() || 0}</td>
+                <td></td>
                 <td class="dbd-time-cell">${formatTime(player.playerTimeInMatch)}</td>
             </tr>
         `;
@@ -298,6 +299,7 @@
                         <col style="width: 60px;"> <!-- Score -->
                         <col> <!-- Spacer 2 -->
                         <col style="width: 70px;"> <!-- Total BP -->
+                        <col> <!-- Spacer 3 -->
                         <col style="width: 55px;"> <!-- Match -->
                     </colgroup>
                     <thead>
@@ -309,6 +311,7 @@
                             <th title="Boldness / Sacrifice">Bold / Sac</th>
                             <th></th>
                             <th style="text-align: center;">BP</th>
+                            <th></th>
                             <th style="text-align: center;">Match</th>
                         </tr>
                     </thead>
