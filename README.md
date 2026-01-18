@@ -1,12 +1,8 @@
-<div align="center">
-
 # DBD Detailed Match History
 
 **Match history for BP/hour min-maxers.**
 
 [![GitHub License](https://img.shields.io/github/license/Bloodpoint-Farming/dbd-detailed-match-history)](./LICENSE) [![Greasy Fork Version](https://img.shields.io/greasyfork/v/562996-dbd-detailed-match-history)](https://greasyfork.org/en/scripts/562996-dbd-detailed-match-history) [![Greasy Fork Downloads](https://img.shields.io/greasyfork/dt/562996-dbd-detailed-match-history)](https://greasyfork.org/en/scripts/562996-dbd-detailed-match-history)
-
-</div>
 
 ## Overview
 
