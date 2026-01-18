@@ -161,7 +161,7 @@
         `;
     }
 
-    function createPlayerRow(player, isKiller, isUser = false, bpHour = null) {
+    function createPlayerRow(player, isKiller, isUser = false) {
         const loadout = player.characterLoadout || {};
         const postGame = player.postGameStat || {};
 
@@ -170,7 +170,7 @@
             ? ['Brutality', 'Deviousness', 'Hunter', 'Sacrifice']
             : ['Objectives', 'Survival', 'Altruism', 'Boldness'];
 
-        const statsHtml = statKeys.map(key => {
+        const scoreCategoriesHtml = statKeys.map(key => {
             const fullKey = isKiller ? `DBD_SlasherScoreCat_${key}` : `DBD_CamperScoreCat_${key}`;
             const score = postGame[fullKey] || 0;
             const isLow = score < 10000;
@@ -220,7 +220,7 @@
                 </td>
                 ${loadoutHtml}
                 <td></td>
-                ${statsHtml}
+                ${scoreCategoriesHtml}
                 <td></td>
                 <td class="dbd-bp-cell">${player.bloodpointsEarned?.toLocaleString() || 0}</td>
                 <td></td>
@@ -278,7 +278,7 @@
         }
 
 
-        const allPlayers = [match.playerStat].map(p => createPlayerRow(p, p.playerRole === 'VE_Slasher', true, bpHour));
+        const allPlayers = [match.playerStat].map(p => createPlayerRow(p, p.playerRole === 'VE_Slasher', true));
         const opponentRows = match.opponentStat.map(p => createPlayerRow(p, p.playerRole === 'VE_Slasher', false));
 
         const rowsHtml = allPlayers.concat(opponentRows).join('');
