@@ -248,9 +248,9 @@
         let downtimeHtml = ''
         if (currentIndex < matchesSorted.length - 1) {
             const currentStart = match.matchStat.matchStartTime;
-            const currentEnd = currentStart + match.matchStat.matchDuration;
+            const currentEnd = currentStart + match.playerStat.playerTimeInMatch;
             const prevMatch = matchesSorted[currentIndex + 1];
-            const prevEnd = prevMatch.matchStat.matchStartTime + prevMatch.matchStat.matchDuration;
+            const prevEnd = prevMatch.matchStat.matchStartTime + prevMatch.playerStat.playerTimeInMatch;
 
             const hourDiff = (currentEnd - prevEnd) / 3600;
             const hourDiffRound = Math.round(hourDiff)
