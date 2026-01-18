@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DBD Detailed Match History
 // @namespace    https://github.com/Bloodpoint-Farming
-// @version      1.0.5
+// @version      1.0.6
 // @description  Changes match history to show BP/category for all players and BP/hour.
 // @author       Snoggles
 // @match        https://stats.deadbydaylight.com/match-history*
@@ -715,6 +715,16 @@
             }
         `;
         document.head.appendChild(style);
+
+        // Observer
+        const observer = new MutationObserver(() => {
+            if (matchDataStore.size > 0) {
+                if (window._dbdTimer) clearTimeout(window._dbdTimer);
+                window._dbdTimer = setTimeout(processAllCards, 0);
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+
 
         // Initial scan
         processAllCards();
