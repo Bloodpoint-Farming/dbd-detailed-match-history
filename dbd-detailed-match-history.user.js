@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DBD Detailed Match History
 // @namespace    https://github.com/Bloodpoint-Farming
-// @version      1.0.6
+// @version      1.0.7
 // @description  Changes match history to show BP/category for all players and BP/hour.
 // @author       Snoggles
 // @match        https://stats.deadbydaylight.com/match-history*
@@ -168,7 +168,7 @@
         // Post game stats - find the 4 values
         const statKeys = isKiller
             ? ['Brutality', 'Deviousness', 'Hunter', 'Sacrifice']
-            : ['Objectives', 'Altruism', 'Boldness', 'Survival'];
+            : ['Objectives', 'Survival', 'Altruism', 'Boldness'];
 
         const statsHtml = statKeys.map(key => {
             const fullKey = isKiller ? `DBD_SlasherScoreCat_${key}` : `DBD_CamperScoreCat_${key}`;
