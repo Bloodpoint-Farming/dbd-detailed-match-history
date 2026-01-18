@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DBD Detailed Match History
 // @namespace    https://github.com/Bloodpoint-Farming
-// @version      1.0.2
+// @version      1.0.3
 // @description  Changes match history to show BP/category for all players and BP/hour.
 // @author       Snoggles
 // @match        https://stats.deadbydaylight.com/match-history*
@@ -10,6 +10,7 @@
 // @updateURL    https://github.com/Bloodpoint-Farming/dbd-detailed-match-history/raw/refs/heads/main/dbd-detailed-match-history.user.js
 // @downloadURL  https://github.com/Bloodpoint-Farming/dbd-detailed-match-history/raw/refs/heads/main/dbd-detailed-match-history.user.js
 // @supportURL   https://github.com/Bloodpoint-Farming/dbd-detailed-match-history
+// @icon         https://bloodpoint-farming.github.io/dbd-detailed-match-history/img/bloodpoints-96.webp
 // ==/UserScript==
 
 (function () {
