@@ -713,15 +713,6 @@
         `;
         document.head.appendChild(style);
 
-        // Observer
-        const observer = new MutationObserver(() => {
-            if (matchDataStore.size > 0) {
-                if (window._dbdTimer) clearTimeout(window._dbdTimer);
-                window._dbdTimer = setTimeout(processAllCards, 0);
-            }
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-
         // Initial scan
         processAllCards();
     }
