@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DBD Detailed Match History
 // @namespace    https://github.com/Bloodpoint-Farming
-// @version      1.0.4
+// @version      1.0.5
 // @description  Changes match history to show BP/category for all players and BP/hour.
 // @author       Snoggles
 // @match        https://stats.deadbydaylight.com/match-history*
@@ -404,12 +404,12 @@
         matches.forEach((match, index) => {
             const matchId = `${match.matchStat.matchStartTime}_${match.matchStat.map.name}`;
             const elementId = `dbd-match-${match.matchStat.matchStartTime}`; // Use start time for ID stability
-            let existing = document.getElementById(elementId);
+            let card = document.getElementById(elementId);
 
-            if (!existing) {
-                const newCard = createEnhancedCard(match, index);
-                newCard.id = elementId;
-                newCard.dataset.dbdMatchId = matchId;
+            if (!card) {
+                card = createEnhancedCard(match, index);
+                card.id = elementId;
+                card.dataset.dbdMatchId = matchId;
 
                 // Find correct position in wrapper to maintain reverse-chronological order
                 const nextInSorted = matches[index + 1];
@@ -420,11 +420,14 @@
                 }
 
                 if (referenceNode) {
-                    wrapper.insertBefore(newCard, referenceNode);
+                    wrapper.insertBefore(card, referenceNode);
                 } else {
-                    wrapper.appendChild(newCard);
+                    wrapper.appendChild(card);
                 }
             }
+
+            // Ensure only the latest match is expanded after adding new data or re-processing
+            card.setAttribute('data-dbd-expanded', index === 0 ? 'true' : 'false');
         });
     }
 
