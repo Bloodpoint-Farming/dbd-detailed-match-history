@@ -34,6 +34,15 @@
     // --- Configuration ---
     const ICON_SIZE = 44;
     const ICON_SIZE_SMALL = ICON_SIZE * 0.8;
+    
+    // auto refresh
+    const AUTO_REFRESH = true;
+    const AUTO_REFRESH_MAX_RETRIES = 5;
+    const AUTO_REFRESH_BACKOFF_SEC = 30; // 30, 60, 120, 240, ...
+    const AUTO_REFRESH_GRACE_SEC = 60;   // small buffer so we don’t refresh too early
+
+    const MATCH_HISTORY_REFRESH_URL =
+        'https://account-backend.bhvr.com/player-stats/match-history/games/dbd/providers/bhvr?lang=en&limit=30';
 
     // Store for intercepted match data
     const matchDataStore = new Map();
@@ -47,7 +56,108 @@
             console.log(`[DBD Userscript] Stored ${data.length} matches. Total: ${matchDataStore.size}`);
             document.documentElement.classList.add('dbd-data-ready');
             processAllCards();
+            scheduleRefresh();
         }
+    }
+
+        let _dbdRefreshTimer = null;
+    let _dbdRefreshRetries = 0;
+
+    function clearRefreshTimer() {
+        if (_dbdRefreshTimer) {
+            clearTimeout(_dbdRefreshTimer);
+            _dbdRefreshTimer = null;
+        }
+    }
+
+    function getLatestStart() {
+        let latest = null;
+        for (const m of matchDataStore.values()) {
+            const t = m?.matchStat?.matchStartTime;
+            if (typeof t === 'number' && (latest === null || t > latest)) latest = t;
+        }
+        return latest;
+    }
+
+    function estimateCadenceSec() {
+        // grab last few match starts and take median gap (stable)
+        const starts = Array.from(matchDataStore.values())
+            .map(m => m?.matchStat?.matchStartTime)
+            .filter(t => typeof t === 'number')
+            .sort((a, b) => b - a);
+
+        if (starts.length < 2) return null;
+
+        const gaps = [];
+        for (let i = 0; i < Math.min(6, starts.length - 1); i++) {
+            const d = starts[i] - starts[i + 1];
+            if (d > 0) gaps.push(d);
+        }
+        if (!gaps.length) return null;
+
+        gaps.sort((a, b) => a - b);
+        const mid = Math.floor(gaps.length / 2);
+        return gaps.length % 2 ? gaps[mid] : Math.round((gaps[mid - 1] + gaps[mid]) / 2);
+    }
+
+    async function refreshNow() {
+        // cache buster so processedUrls doesn’t block us
+        const url = `${MATCH_HISTORY_REFRESH_URL}&_=${Date.now()}`;
+        try {
+            await window.fetch(url, { credentials: 'include' });
+            // interceptor will pick it up and call storeMatchData()
+        } catch (e) {
+            console.log('[DBD Userscript] refresh failed', e);
+        }
+    }
+
+    function scheduleRefresh() {
+        if (!AUTO_REFRESH) return;
+        clearRefreshTimer();
+
+        const latest = getLatestStart();
+        const cadence = estimateCadenceSec();
+        if (!latest || !cadence) return;
+
+        _dbdRefreshRetries = 0;
+
+        const now = Math.floor(Date.now() / 1000);
+        const target = latest + cadence + AUTO_REFRESH_GRACE_SEC;
+        let delay = target - now;
+
+        // don’t spam / don’t schedule crazy far out
+        delay = Math.max(15, Math.min(60 * 60, delay));
+
+        console.log(`[DBD Userscript] next refresh in ${delay}s`);
+        _dbdRefreshTimer = setTimeout(tryRefresh, delay * 1000);
+    }
+
+    async function tryRefresh() {
+        if (!AUTO_REFRESH) return;
+
+        const before = getLatestStart();
+        await refreshNow();
+
+        setTimeout(() => {
+            const after = getLatestStart();
+            if (after && before && after > before) {
+                console.log('[DBD Userscript] new match found');
+                scheduleRefresh();
+                return;
+            }
+
+            if (_dbdRefreshRetries >= AUTO_REFRESH_MAX_RETRIES) {
+                console.log('[DBD Userscript] no new match, giving up');
+                clearRefreshTimer();
+                return;
+            }
+
+            const backoff = AUTO_REFRESH_BACKOFF_SEC * Math.pow(2, _dbdRefreshRetries);
+            _dbdRefreshRetries += 1;
+            console.log(`[DBD Userscript] no new match, retry ${_dbdRefreshRetries} in ${backoff}s`);
+            clearRefreshTimer();
+            _dbdRefreshTimer = setTimeout(tryRefresh, backoff * 1000);
+        }, 500);
     }
 
     // --- Interception & Data Retrieval ---
