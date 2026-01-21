@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         DBD Detailed Match History
 // @namespace    https://github.com/Bloodpoint-Farming
-// @version      1.0.9
+// @version      1.1.0
 // @description  Changes match history to show BP/category for all players and BP/hour.
-// @author       Snoggles
+// @author       Snoggles & Sic4rioDragon
 // @match        https://stats.deadbydaylight.com/*
 // @run-at       document-start
 // @license      MIT
@@ -46,11 +46,12 @@
 
     // Store for intercepted match data
     const matchDataStore = new Map();
-
+    
     function storeMatchData(data) {
         if (Array.isArray(data)) {
             data.forEach(match => {
-                const matchId = `${match.matchStat.matchStartTime}_${match.matchStat.map.name}`;
+                const mapKey = match?.matchStat?.map?.name || 'UnknownMap';
+                const matchId = `${match.matchStat.matchStartTime}_${mapKey}`;
                 matchDataStore.set(matchId, match);
             });
             console.log(`[DBD Userscript] Stored ${data.length} matches. Total: ${matchDataStore.size}`);
@@ -62,6 +63,10 @@
 
         let _dbdRefreshTimer = null;
     let _dbdRefreshRetries = 0;
+
+    function hasAnyMatches() {
+    return matchDataStore.size > 0;
+    }
 
     function clearRefreshTimer() {
         if (_dbdRefreshTimer) {
@@ -228,9 +233,17 @@
             console.error('[DBD Userscript] Error extracting from sessionStorage:', err);
         }
     }
-
+    
     setupInterception();
     extractFromSessionStorage();
+    
+    setTimeout(() => {
+    if (!hasAnyMatches()) {
+        console.log('[DBD Userscript] no match data after initial load, retrying once');
+        processedUrls.clear(); 
+        refreshNow();
+    }
+    }, 3000);
 
     // --- UI Rendering ---
 
@@ -246,10 +259,12 @@
         return `${m}:${s.toString().padStart(2, '0')}`;
     }
 
+    // saveguard for undefined images problem (see issue #10)
     function getImageUrl(path) {
-        if (!path) return '';
-        if (path.startsWith('https')) return path;
-        return ASSETS_BASE_URL + path;
+    if (!path) return '';
+    if (path.includes('undefined.png')) return '';
+    if (path.startsWith('https')) return path;
+    return ASSETS_BASE_URL + path;
     }
 
     function renderLoadoutItem(item, bgType, title = '', sizeClass = 'dbd-loadout-large') {
@@ -448,8 +463,11 @@
                 </table>
                 <div class="dbd-match-global-info">
                     <div class="dbd-map-photo-container">
-                        <img src="${getImageUrl(match.matchStat.map?.image?.path)}" alt="${match.matchStat.map?.name || ''}" class="dbd-map-photo">
+                        ${getImageUrl(match.matchStat.map?.image?.path)
+                            ? `<img src="${getImageUrl(match.matchStat.map?.image?.path)}" alt="${match.matchStat.map?.name || ''}" class="dbd-map-photo">`
+                            : ''}
                     </div>
+
                     <div class="dbd-global-text-stack">
                         <span class="dbd-match-map-name">${match.matchStat.map?.name || 'Unknown Map'}</span> 
                         ${bpHourHtml}
@@ -512,7 +530,8 @@
         const matches = Array.from(matchDataStore.values()).sort((a, b) => b.matchStat.matchStartTime - a.matchStat.matchStartTime);
 
         matches.forEach((match, index) => {
-            const matchId = `${match.matchStat.matchStartTime}_${match.matchStat.map.name}`;
+            const mapKey = match?.matchStat?.map?.name || 'UnknownMap';
+            const matchId = `${match.matchStat.matchStartTime}_${mapKey}`;
             const elementId = `dbd-match-${match.matchStat.matchStartTime}`; // Use start time for ID stability
             let card = document.getElementById(elementId);
 
