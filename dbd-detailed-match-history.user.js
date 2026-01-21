@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         DBD Detailed Match History
 // @namespace    https://github.com/Bloodpoint-Farming
-// @version      1.0.9
+// @version      1.1.0
 // @description  Changes match history to show BP/category for all players and BP/hour.
-// @author       Snoggles
+// @author       Snoggles & Sic4rioDragon
 // @match        https://stats.deadbydaylight.com/*
 // @run-at       document-start
 // @license      MIT
@@ -34,20 +34,135 @@
     // --- Configuration ---
     const ICON_SIZE = 44;
     const ICON_SIZE_SMALL = ICON_SIZE * 0.8;
+    
+    // auto refresh
+    const AUTO_REFRESH = true;
+    const AUTO_REFRESH_MAX_RETRIES = 5;
+    const AUTO_REFRESH_BACKOFF_SEC = 30; // 30, 60, 120, 240, ...
+    const AUTO_REFRESH_GRACE_SEC = 60;   // small buffer so we don’t refresh too early
+
+    const MATCH_HISTORY_REFRESH_URL =
+        'https://account-backend.bhvr.com/player-stats/match-history/games/dbd/providers/bhvr?lang=en&limit=30';
 
     // Store for intercepted match data
     const matchDataStore = new Map();
-
+    
     function storeMatchData(data) {
         if (Array.isArray(data)) {
             data.forEach(match => {
-                const matchId = `${match.matchStat.matchStartTime}_${match.matchStat.map.name}`;
+                const mapKey = match?.matchStat?.map?.name || 'UnknownMap';
+                const matchId = `${match.matchStat.matchStartTime}_${mapKey}`;
                 matchDataStore.set(matchId, match);
             });
             console.log(`[DBD Userscript] Stored ${data.length} matches. Total: ${matchDataStore.size}`);
             document.documentElement.classList.add('dbd-data-ready');
             processAllCards();
+            scheduleRefresh();
         }
+    }
+
+        let _dbdRefreshTimer = null;
+    let _dbdRefreshRetries = 0;
+
+    function hasAnyMatches() {
+    return matchDataStore.size > 0;
+    }
+
+    function clearRefreshTimer() {
+        if (_dbdRefreshTimer) {
+            clearTimeout(_dbdRefreshTimer);
+            _dbdRefreshTimer = null;
+        }
+    }
+
+    function getLatestStart() {
+        let latest = null;
+        for (const m of matchDataStore.values()) {
+            const t = m?.matchStat?.matchStartTime;
+            if (typeof t === 'number' && (latest === null || t > latest)) latest = t;
+        }
+        return latest;
+    }
+
+    function estimateCadenceSec() {
+        // grab last few match starts and take median gap (stable)
+        const starts = Array.from(matchDataStore.values())
+            .map(m => m?.matchStat?.matchStartTime)
+            .filter(t => typeof t === 'number')
+            .sort((a, b) => b - a);
+
+        if (starts.length < 2) return null;
+
+        const gaps = [];
+        for (let i = 0; i < Math.min(6, starts.length - 1); i++) {
+            const d = starts[i] - starts[i + 1];
+            if (d > 0) gaps.push(d);
+        }
+        if (!gaps.length) return null;
+
+        gaps.sort((a, b) => a - b);
+        const mid = Math.floor(gaps.length / 2);
+        return gaps.length % 2 ? gaps[mid] : Math.round((gaps[mid - 1] + gaps[mid]) / 2);
+    }
+
+    async function refreshNow() {
+        // cache buster so processedUrls doesn’t block us
+        const url = `${MATCH_HISTORY_REFRESH_URL}&_=${Date.now()}`;
+        try {
+            await window.fetch(url, { credentials: 'include' });
+            // interceptor will pick it up and call storeMatchData()
+        } catch (e) {
+            console.log('[DBD Userscript] refresh failed', e);
+        }
+    }
+
+    function scheduleRefresh() {
+        if (!AUTO_REFRESH) return;
+        clearRefreshTimer();
+
+        const latest = getLatestStart();
+        const cadence = estimateCadenceSec();
+        if (!latest || !cadence) return;
+
+        _dbdRefreshRetries = 0;
+
+        const now = Math.floor(Date.now() / 1000);
+        const target = latest + cadence + AUTO_REFRESH_GRACE_SEC;
+        let delay = target - now;
+
+        // don’t spam / don’t schedule crazy far out
+        delay = Math.max(15, Math.min(60 * 60, delay));
+
+        console.log(`[DBD Userscript] next refresh in ${delay}s`);
+        _dbdRefreshTimer = setTimeout(tryRefresh, delay * 1000);
+    }
+
+    async function tryRefresh() {
+        if (!AUTO_REFRESH) return;
+
+        const before = getLatestStart();
+        await refreshNow();
+
+        setTimeout(() => {
+            const after = getLatestStart();
+            if (after && before && after > before) {
+                console.log('[DBD Userscript] new match found');
+                scheduleRefresh();
+                return;
+            }
+
+            if (_dbdRefreshRetries >= AUTO_REFRESH_MAX_RETRIES) {
+                console.log('[DBD Userscript] no new match, giving up');
+                clearRefreshTimer();
+                return;
+            }
+
+            const backoff = AUTO_REFRESH_BACKOFF_SEC * Math.pow(2, _dbdRefreshRetries);
+            _dbdRefreshRetries += 1;
+            console.log(`[DBD Userscript] no new match, retry ${_dbdRefreshRetries} in ${backoff}s`);
+            clearRefreshTimer();
+            _dbdRefreshTimer = setTimeout(tryRefresh, backoff * 1000);
+        }, 500);
     }
 
     // --- Interception & Data Retrieval ---
@@ -118,9 +233,17 @@
             console.error('[DBD Userscript] Error extracting from sessionStorage:', err);
         }
     }
-
+    
     setupInterception();
     extractFromSessionStorage();
+    
+    setTimeout(() => {
+    if (!hasAnyMatches()) {
+        console.log('[DBD Userscript] no match data after initial load, retrying once');
+        processedUrls.clear(); 
+        refreshNow();
+    }
+    }, 3000);
 
     // --- UI Rendering ---
 
@@ -136,10 +259,12 @@
         return `${m}:${s.toString().padStart(2, '0')}`;
     }
 
+    // saveguard for undefined images problem (see issue #10)
     function getImageUrl(path) {
-        if (!path) return '';
-        if (path.startsWith('https')) return path;
-        return ASSETS_BASE_URL + path;
+    if (!path) return '';
+    if (path.includes('undefined.png')) return '';
+    if (path.startsWith('https')) return path;
+    return ASSETS_BASE_URL + path;
     }
 
     function renderLoadoutItem(item, bgType, title = '', sizeClass = 'dbd-loadout-large') {
@@ -338,8 +463,11 @@
                 </table>
                 <div class="dbd-match-global-info">
                     <div class="dbd-map-photo-container">
-                        <img src="${getImageUrl(match.matchStat.map?.image?.path)}" alt="${match.matchStat.map?.name || ''}" class="dbd-map-photo">
+                        ${getImageUrl(match.matchStat.map?.image?.path)
+                            ? `<img src="${getImageUrl(match.matchStat.map?.image?.path)}" alt="${match.matchStat.map?.name || ''}" class="dbd-map-photo">`
+                            : ''}
                     </div>
+
                     <div class="dbd-global-text-stack">
                         <span class="dbd-match-map-name">${match.matchStat.map?.name || 'Unknown Map'}</span> 
                         ${bpHourHtml}
@@ -402,7 +530,8 @@
         const matches = Array.from(matchDataStore.values()).sort((a, b) => b.matchStat.matchStartTime - a.matchStat.matchStartTime);
 
         matches.forEach((match, index) => {
-            const matchId = `${match.matchStat.matchStartTime}_${match.matchStat.map.name}`;
+            const mapKey = match?.matchStat?.map?.name || 'UnknownMap';
+            const matchId = `${match.matchStat.matchStartTime}_${mapKey}`;
             const elementId = `dbd-match-${match.matchStat.matchStartTime}`; // Use start time for ID stability
             let card = document.getElementById(elementId);
 
