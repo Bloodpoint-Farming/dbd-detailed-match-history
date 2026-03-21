@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DBD Detailed Match History
 // @namespace    https://github.com/Bloodpoint-Farming
-// @version      1.0.9
+// @version      1.0.10
 // @description  Changes match history to show BP/category for all players and BP/hour.
 // @author       Snoggles
 // @match        https://stats.deadbydaylight.com/*
@@ -205,13 +205,14 @@
             ? `<img src="${getImageUrl(player.playerStatus.image.path)}" class="dbd-status-icon-overlay">`
             : '';
 
-        const charBgUrl = `/_next/image/?url=%2Fstatic%2Fimages%2Fgames%2Fdbd%2Fcharacters%2F${isKiller ? 'killer' : 'survivor'}_bg.png&w=3840&q=75`;
+        const charBgFilename = isKiller ? 'killer_bg.69480d29.png' : 'survivor_bg.4cff1d86.png';
+        const charBgUrl = `/_next/image/?url=%2F_next%2Fstatic%2Fmedia%2F${charBgFilename}&w=3840&q=75`
 
         return `
             <tr class="dbd-player-row ${isKiller ? 'dbd-killer-row' : 'dbd-survivor-row'} ${isUser ? 'dbd-user-row' : 'dbd-opponent-row'}">
                 <td class="dbd-char-cell">
                     <div class="dbd-char-container" title="${player.characterName?.name || ''}">
-                        <img src="${charBgUrl}" class="dbd-char-bg" role="presentation">
+                        <img src="${charBgUrl}" class="dbd-char-bg" role="presentation" onerror="this.style.display='none'">>
                         <div class="dbd-char-icon-wrapper">
                             <img src="${getImageUrl(player.characterName?.image?.path)}" alt="${player.characterName?.name || ''}" class="dbd-char-icon">
                         </div>
@@ -521,6 +522,7 @@
                 height: ${ICON_SIZE}px;
                 overflow: hidden;
                 border-radius: 2px;
+                background-color: black;
             }
             .dbd-char-bg {
                 position: absolute;
