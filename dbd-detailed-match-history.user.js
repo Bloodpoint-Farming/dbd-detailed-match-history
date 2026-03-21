@@ -339,7 +339,7 @@
                 </table>
                 <div class="dbd-match-global-info">
                     <div class="dbd-map-photo-container">
-                        <img src="${getImageUrl(match.matchStat.map?.image?.path)}" alt="${match.matchStat.map?.name || ''}" class="dbd-map-photo">
+                        <img src="${getImageUrl(match.matchStat.map?.image?.path)}" alt="${match.matchStat.map?.name || ''}" class="dbd-map-photo" onerror="this.style.display='none'">
                     </div>
                     <div class="dbd-global-text-stack">
                         <span class="dbd-match-map-name">${match.matchStat.map?.name || 'Unknown Map'}</span> 
@@ -674,7 +674,6 @@
                 width: 120px;
                 height: 80px;
                 overflow: hidden;
-                border-radius: 4px;
                 flex-shrink: 0;
             }
             .dbd-map-photo {
