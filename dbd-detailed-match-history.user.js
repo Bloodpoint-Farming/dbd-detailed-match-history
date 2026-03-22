@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DBD Detailed Match History
 // @namespace    https://github.com/Bloodpoint-Farming
-// @version      1.0.11
+// @version      1.0.12
 // @description  Changes match history to show BP/category for all players and BP/hour.
 // @author       Snoggles
 // @match        https://stats.deadbydaylight.com/*
@@ -353,8 +353,10 @@
 
     // --- DOM Mutation Handling ---
 
-    function createEnhancedCard(match, index) {
+    function createEnhancedCard(match, index, id, hash) {
         const newCard = document.createElement('div');
+        newCard.id = id;
+        newCard.dataset.hash = hash;
         newCard.className = '@container/match-card dbd-table-mode';
 
         const isKillerMatch = Object.keys(match.playerStat?.postGameStat || {}).some(k => k.includes('Slasher'));
@@ -412,40 +414,28 @@
         const matches = Array.from(matchDataStore.values()).sort((a, b) => b.matchStat.matchStartTime - a.matchStat.matchStartTime);
 
         matches.forEach((match, index) => {
-            const matchId = `${match.matchStat.matchStartTime}_${match.matchStat.map.name}`;
-            const elementId = `dbd-match-${match.matchStat.matchStartTime}`; // Use start time for ID stability
-            const newHash = fastSyncHash(JSON.stringify(match)).toString();
-            const oldCard = document.getElementById(elementId);
+            const elementId = `dbd-match-${match.matchStat.matchStartTime}`;
+            const hash = fastSyncHash(JSON.stringify(match)).toString();
+            let card = document.getElementById(elementId);
 
-            function newCard() {
-                const newCard = createEnhancedCard(match, index);
-                newCard.dataset.hash = newHash;
-                newCard.id = elementId;
-                newCard.dataset.dbdMatchId = matchId;
-                // Ensure only the latest match is expanded after adding new data or re-processing
-                newCard.setAttribute('data-dbd-expanded', index === 0 ? 'true' : 'false');
-                return newCard;
-            }
-
-            if (oldCard) {
-                if (oldCard.dataset.hash !== newHash) {
-                    // most recent match changes often. others can too.
-                    oldCard.replaceWith(newCard());
+            if (card) {
+                if (card.dataset.hash !== hash) {
+                    // Card has changed
+                    const updatedCard = createEnhancedCard(match, index, elementId, hash);
+                    updatedCard.setAttribute('data-dbd-expanded', index === 0 ? 'true' : 'false');
+                    card.replaceWith(updatedCard);
+                    card = updatedCard;
                 }
             } else {
-                // Find correct position in wrapper to maintain reverse-chronological order
-                const nextInSorted = matches[index + 1];
-                let referenceNode = null;
-                if (nextInSorted) {
-                    const nextElementId = `dbd-match-${nextInSorted.matchStat.matchStartTime}`;
-                    referenceNode = document.getElementById(nextElementId);
-                }
+                // Card didn't exist previously.
+                card = createEnhancedCard(match, index, elementId, hash);
+                card.setAttribute('data-dbd-expanded', index === 0 ? 'true' : 'false');
+            }
 
-                if (referenceNode) {
-                    wrapper.insertBefore(newCard(), referenceNode);
-                } else {
-                    wrapper.appendChild(newCard());
-                }
+            // Ensure the card is at the correct index within our wrapper
+            const referenceNode = wrapper.children[index];
+            if (card !== referenceNode) {
+                wrapper.insertBefore(card, referenceNode || null);
             }
         });
     }
