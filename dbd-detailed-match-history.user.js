@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DBD Detailed Match History
 // @namespace    https://github.com/Bloodpoint-Farming
-// @version      1.0.10
+// @version      1.0.11
 // @description  Changes match history to show BP/category for all players and BP/hour.
 // @author       Snoggles
 // @match        https://stats.deadbydaylight.com/*
@@ -375,6 +375,15 @@
         return newCard;
     }
 
+    function fastSyncHash(str) {
+        let hash = 2166136261;
+        for (let i = 0; i < str.length; i++) {
+            hash ^= str.charCodeAt(i);
+            hash = Math.imul(hash, 16777619);
+        }
+        return hash >>> 0;
+    }
+
     function processAllCards() {
         const originalCards = document.querySelectorAll('.\\@container\\/match-card:not(.dbd-table-mode)');
 
@@ -405,13 +414,25 @@
         matches.forEach((match, index) => {
             const matchId = `${match.matchStat.matchStartTime}_${match.matchStat.map.name}`;
             const elementId = `dbd-match-${match.matchStat.matchStartTime}`; // Use start time for ID stability
-            let card = document.getElementById(elementId);
+            const newHash = fastSyncHash(JSON.stringify(match)).toString();
+            const oldCard = document.getElementById(elementId);
 
-            if (!card) {
-                card = createEnhancedCard(match, index);
-                card.id = elementId;
-                card.dataset.dbdMatchId = matchId;
+            function newCard() {
+                const newCard = createEnhancedCard(match, index);
+                newCard.dataset.hash = newHash;
+                newCard.id = elementId;
+                newCard.dataset.dbdMatchId = matchId;
+                // Ensure only the latest match is expanded after adding new data or re-processing
+                newCard.setAttribute('data-dbd-expanded', index === 0 ? 'true' : 'false');
+                return newCard;
+            }
 
+            if (oldCard) {
+                if (oldCard.dataset.hash !== newHash) {
+                    // most recent match changes often. others can too.
+                    oldCard.replaceWith(newCard());
+                }
+            } else {
                 // Find correct position in wrapper to maintain reverse-chronological order
                 const nextInSorted = matches[index + 1];
                 let referenceNode = null;
@@ -421,14 +442,11 @@
                 }
 
                 if (referenceNode) {
-                    wrapper.insertBefore(card, referenceNode);
+                    wrapper.insertBefore(newCard(), referenceNode);
                 } else {
-                    wrapper.appendChild(card);
+                    wrapper.appendChild(newCard());
                 }
             }
-
-            // Ensure only the latest match is expanded after adding new data or re-processing
-            card.setAttribute('data-dbd-expanded', index === 0 ? 'true' : 'false');
         });
     }
 
