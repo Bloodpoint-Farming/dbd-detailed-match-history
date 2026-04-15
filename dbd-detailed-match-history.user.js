@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DBD Detailed Match History
 // @namespace    https://github.com/Bloodpoint-Farming
-// @version      1.0.12
+// @version      1.0.13
 // @description  Changes match history to show BP/category for all players and BP/hour.
 // @author       Snoggles
 // @match        https://stats.deadbydaylight.com/*
@@ -212,7 +212,7 @@
             <tr class="dbd-player-row ${isKiller ? 'dbd-killer-row' : 'dbd-survivor-row'} ${isUser ? 'dbd-user-row' : 'dbd-opponent-row'}">
                 <td class="dbd-char-cell">
                     <div class="dbd-char-container" title="${player.characterName?.name || ''}">
-                        <img src="${charBgUrl}" class="dbd-char-bg" role="presentation" onerror="this.style.display='none'">>
+                        <img src="${charBgUrl}" class="dbd-char-bg" role="presentation" onerror="this.style.display='none'">
                         <div class="dbd-char-icon-wrapper">
                             <img src="${getImageUrl(player.characterName?.image?.path)}" alt="${player.characterName?.name || ''}" class="dbd-char-icon">
                         </div>
