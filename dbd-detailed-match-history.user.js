@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DBD Detailed Match History
 // @namespace    https://github.com/Bloodpoint-Farming
-// @version      1.0.13
+// @version      1.0.14
 // @description  Changes match history to show BP/category for all players and BP/hour.
 // @author       Snoggles
 // @match        https://stats.deadbydaylight.com/*
@@ -57,7 +57,7 @@
     function setupInterception() {
         // --- Fetch Interception ---
         const originalFetch = window.fetch;
-        window.fetch = async function (...args) {
+        const patchedFetch = async function (...args) {
             const response = await originalFetch.apply(this, args);
             let url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || args[0]?.href || '');
 
@@ -69,6 +69,29 @@
             }
             return response;
         };
+
+        // Some sites now define window.fetch as non-writable (via
+        // Object.defineProperty with writable:false, or a frozen wrapper).
+        // A plain "window.fetch = ..." assignment throws
+        // "TypeError: fetch is read-only" in strict mode and halts the
+        // whole script. Object.defineProperty bypasses that as long as the
+        // property is still configurable.
+        try {
+            Object.defineProperty(window, 'fetch', {
+                value: patchedFetch,
+                writable: true,
+                configurable: true
+            });
+            console.log('[DBD Userscript] fetch patched via defineProperty.');
+        } catch (err) {
+            console.warn('[DBD Userscript] defineProperty failed, trying direct assignment:', err);
+            try {
+                window.fetch = patchedFetch;
+                console.log('[DBD Userscript] fetch patched via direct assignment.');
+            } catch (err2) {
+                console.error('[DBD Userscript] Could not override fetch at all. Falling back to XHR + sessionStorage only.', err2);
+            }
+        }
 
         // --- XHR Interception ---
         const originalOpen = XMLHttpRequest.prototype.open;
