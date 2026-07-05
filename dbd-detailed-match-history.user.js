@@ -7,10 +7,10 @@
 // @match        https://stats.deadbydaylight.com/*
 // @run-at       document-start
 // @license      MIT
+// @updateURL    https://github.com/Bloodpoint-Farming/dbd-detailed-match-history/raw/refs/heads/main/dbd-detailed-match-history.user.js
+// @downloadURL  https://github.com/Bloodpoint-Farming/dbd-detailed-match-history/raw/refs/heads/main/dbd-detailed-match-history.user.js
 // @supportURL   https://github.com/Bloodpoint-Farming/dbd-detailed-match-history
 // @icon         https://bloodpoint-farming.github.io/dbd-detailed-match-history/img/bloodpoints-96.webp
-// @downloadURL https://update.greasyfork.org/scripts/562996/DBD%20Detailed%20Match%20History.user.js
-// @updateURL https://update.greasyfork.org/scripts/562996/DBD%20Detailed%20Match%20History.meta.js
 // ==/UserScript==
 
 (function () {
